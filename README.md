@@ -2,6 +2,10 @@
 
 A CLI tool that audits any business website for visibility in AI search engines (ChatGPT, Perplexity, Google AI Overviews). Enter a URL; get a scored HTML report showing where you're invisible, why, and exactly what to fix.
 
+# Architecture
+<img width="2134" height="1808" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/5005cefe-7305-430e-8bd9-31b1720259e4" />
+
+
 ## Quick start (under 5 minutes)
 
 ```bash
