@@ -65,6 +65,28 @@ Every point is traceable — no black-box numbers.
 4. **Weekly monitoring mode** — re-run on schedule, diff scores over time, alert on drops
 5. **Competitor gap analysis** — run the same 8 queries against a named competitor URL, show where they're winning your slots
 
+## Research foundation
+
+Every check in this tool is grounded in peer-reviewed research. These are the papers that drove the design decisions:
+
+**[GEO: Generative Engine Optimization](https://arxiv.org/abs/2311.09735)**
+Aggarwal et al., Princeton University / Georgia Tech / Allen Institute for AI — ACM SIGKDD 2024.
+The foundational paper. Introduced GEO-Bench (10,000 queries across 9 domains) and empirically proved which content interventions boost AI citation frequency. Key findings used in this tool:
+- 44.2% of all LLM citations originate from the first 30% of a page → drove the Direct Answer Lead check
+- Statistics injection yields the single largest visibility lift → drove the Fact Density check
+- Adding inline source citations yields +115.1% lift for previously low-ranked sites
+- GEO democratises search: lower-DA sites benefit *more* from structural fixes than high-authority domains
+
+**[What Generative Search Engines Like and How to Optimize Web Content Cooperatively](https://arxiv.org/abs/2510.11438)**
+Wu et al., Carnegie Mellon University — ICLR 2026.
+AutoGEO framework. Proved that different generative engines (Gemini, GPT-4, Claude) have distinct content preferences based on training. Confirmed the core GEO finding: engines consistently reward structured, comprehensive, well-sourced, self-contained content.
+
+**[The Nine Pillars of GEO Visibility](https://aithinkerlab.com/generative-engine-optimization-2026/)**
+Industry synthesis of millions of AI citations. Established the ranking factor framework — fact density, direct-answer lead, structured extractability, agent discoverability — that forms the audit's scoring dimensions. Also established that 87% of ChatGPT-cited pages appear in Bing's top results (the Bing Index Presence pillar, skipped in v1 due to API ownership requirement).
+
+**[llms.txt specification](https://llmstxt.org/)**
+The emerging standard for machine-readable site context, analogous to robots.txt but written for LLMs. Directly implemented in the Agent Discoverability check — the tool validates compliance and generates a ready-to-upload llms.txt for every audited site.
+
 ## Sample reports
 
 Run against three real businesses:
