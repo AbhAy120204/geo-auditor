@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEO Audit &mdash; {{ audit.profile.name }}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f9fa;
+    color: #1a1a2e;
+    line-height: 1.6;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+  /* -- Hero -- */
+  .hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 40px 48px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+  }
+  .hero-left { flex: 1; }
+  .hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
+  .hero .domain { color: #a0aec0; font-size: 0.9rem; margin-bottom: 12px; }
+  .hero .verdict { color: #e2e8f0; font-size: 1rem; margin-top: 12px; }
+  .hero-score { text-align: center; min-width: 140px; }
+  .score-num { font-size: 3rem; font-weight: 800; line-height: 1; }
+  .score-label { font-size: 0.85rem; color: #a0aec0; margin-top: 4px; }
+
+  /* Band badges */
+  .band-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 8px;
+  }
+  .band-Critical  { background: #fed7d7; color: #9b2335; }
+  .band-Poor      { background: #feebc8; color: #7b341e; }
+  .band-Fair      { background: #fefcbf; color: #744210; }
+  .band-Good      { background: #c6f6d5; color: #22543d; }
+  .band-Excellent { background: #bee3f8; color: #2a4365; }
+
+  /* -- Mock banner -- */
+  .mock-banner {
+    background: #fefcbf;
+    border: 2px solid #d69e2e;
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #744210;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .mock-banner .icon { font-size: 1.2rem; }
+
+  /* -- Section cards -- */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+
+  /* -- Score Breakdown -- */
+  .formula { font-size: 0.82rem; color: #718096; margin-bottom: 20px; }
+  .breakdown-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .breakdown-label { min-width: 200px; font-size: 0.9rem; color: #4a5568; }
+  .breakdown-bar-wrap { flex: 1; background: #e2e8f0; border-radius: 6px; height: 14px; overflow: hidden; }
+  .breakdown-bar { height: 100%; border-radius: 6px; transition: width 0.4s; }
+  .bar-red    { background: #fc8181; }
+  .bar-yellow { background: #f6e05e; }
+  .bar-green  { background: #68d391; }
+  .breakdown-val { min-width: 50px; text-align: right; font-size: 0.85rem; font-weight: 600; color: #2d3748; }
+
+  /* -- Probe table -- */
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th {
+    background: #f7fafc;
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #718096;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .status-cited     { background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-mentioned { background: #feebc8; color: #7b341e; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-absent    { background: #fed7d7; color: #9b2335; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-error     { background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .snippet-cell { max-width: 340px; font-size: 0.82rem; color: #4a5568; line-height: 1.5; }
+  .snippet-preview { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .snippet-full { display: none; white-space: pre-wrap; }
+  .snippet-toggle { display: inline-block; margin-top: 4px; font-size: 0.75rem; color: #3182ce; cursor: pointer; user-select: none; }
+  .snippet-toggle:hover { text-decoration: underline; }
+  .sources-cell { font-size: 0.78rem; color: #718096; }
+  .sources-cell a { color: #3182ce; text-decoration: none; display: block; }
+  .sources-cell a:hover { text-decoration: underline; }
+
+  /* Competitor chart */
+  .comp-chart { margin-top: 20px; }
+  .comp-chart h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: #4a5568; }
+  .comp-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .comp-name { min-width: 160px; font-size: 0.85rem; color: #2d3748; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .comp-bar-wrap { flex: 1; background: #e2e8f0; border-radius: 4px; height: 12px; }
+  .comp-bar { height: 100%; background: #76e4f7; border-radius: 4px; }
+  .comp-count { font-size: 0.82rem; color: #718096; min-width: 30px; text-align: right; }
+
+  /* -- Check sections -- */
+  .check-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .check-score-display { font-size: 1.3rem; font-weight: 700; }
+  .check-score-max { font-size: 0.85rem; color: #a0aec0; }
+  .why-matters { font-size: 0.9rem; color: #4a5568; margin-bottom: 14px; line-height: 1.6; }
+  .evidence-block {
+    border-left: 4px solid #f6ad55;
+    background: #fffbf0;
+    padding: 12px 16px;
+    font-style: italic;
+    font-size: 0.875rem;
+    color: #4a5568;
+    border-radius: 0 6px 6px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* -- Fix Roadmap -- */
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .matrix-cell {
+    border-radius: 8px;
+    padding: 16px;
+    border: 2px solid transparent;
+  }
+  .matrix-cell.quick-wins { background: #f0fff4; border-color: #68d391; }
+  .matrix-cell.strategic  { background: #ebf8ff; border-color: #76e4f7; }
+  .matrix-cell.easy-wins  { background: #fffff0; border-color: #f6e05e; }
+  .matrix-cell.deprioritize { background: #f7fafc; border-color: #e2e8f0; }
+  .matrix-cell h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .matrix-cell ul { padding-left: 16px; font-size: 0.85rem; color: #4a5568; }
+  .matrix-axis-x { text-align: center; font-size: 0.78rem; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .matrix-axis-label-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .fix-card {
+    background: #f7fafc;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    border-left: 4px solid #3182ce;
+  }
+  .fix-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .fix-card-title { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+  .badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .badge-impact-high   { background: #c6f6d5; color: #22543d; }
+  .badge-impact-medium { background: #feebc8; color: #7b341e; }
+  .badge-impact-low    { background: #e2e8f0; color: #4a5568; }
+  .badge-effort-low    { background: #bee3f8; color: #2a4365; }
+  .badge-effort-medium { background: #fefcbf; color: #744210; }
+  .badge-effort-high   { background: #fed7d7; color: #9b2335; }
+  .fix-explanation { font-size: 0.88rem; color: #4a5568; margin-bottom: 14px; line-height: 1.6; }
+  .copy-paste-block {
+    background: #1a1a2e;
+    color: #e2e8f0;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 0.82rem;
+    padding: 16px 18px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+  }
+
+  /* -- Appendix -- */
+  details { margin-bottom: 10px; }
+  summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #3182ce;
+    padding: 6px 0;
+    user-select: none;
+  }
+  summary:hover { text-decoration: underline; }
+  .json-block {
+    background: #1a1a2e;
+    color: #a0d5b5;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.78rem;
+    padding: 14px 16px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-top: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* -- Footer -- */
+  .footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #a0aec0;
+    margin-top: 40px;
+    padding-bottom: 40px;
+  }
+  .footer a { color: #3182ce; text-decoration: none; }
+
+  /* -- Print -- */
+  @media print {
+    .card { box-shadow: none; }
+    .hero { box-shadow: none; }
+    .copy-paste-block { white-space: pre-wrap; overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 1. HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <h1>{{ audit.profile.name }}</h1>
+      <div class="domain">{{ audit.url }}</div>
+      <span class="band-badge band-{{ audit.band }}">{{ audit.band }}</span>
+      <p class="verdict">
+        {% if audit.band == "Critical" %}
+          Serious GEO gaps &mdash; AI assistants are unlikely to surface or recommend this business.
+        {% elif audit.band == "Poor" %}
+          Significant issues found &mdash; this site is rarely cited by AI-driven search engines.
+        {% elif audit.band == "Fair" %}
+          Some GEO foundations in place, but key gaps are holding back AI visibility.
+        {% elif audit.band == "Good" %}
+          Strong GEO posture &mdash; AI assistants can find and recommend this business for most queries.
+        {% else %}
+          Excellent GEO &mdash; this business is well-optimised for AI discovery and citation.
+        {% endif %}
+      </p>
+    </div>
+    <div class="hero-score">
+      <div class="score-num">{{ audit.overall_score }}</div>
+      <div class="score-label">/ 100</div>
+      <div class="score-label" style="margin-top:6px;">GEO Score</div>
+    </div>
+  </div>
+
+  <!-- 2. MOCK BANNER -->
+  {% if audit.is_mocked %}
+  <div class="mock-banner">
+    <span class="icon">&#9888;</span>
+    <span>Demo mode &mdash; AI visibility probe was not run (no API key). Visibility score is mocked at 0. All on-page checks are real.</span>
+  </div>
+  {% endif %}
+
+  <!-- 3. SCORE BREAKDOWN -->
+  <div class="card">
+    <h2>Score Breakdown</h2>
+    <p class="formula">Formula: AI Visibility (50%) + Direct Answer Lead (20%) + Fact Density &amp; Structure (15%) + Agent Discoverability (15%)</p>
+
+    {% set vis_score = audit.visibility.score %}
+    {% set vis_bar_pct = vis_score %}
+    <div class="breakdown-row">
+      <span class="breakdown-label">AI Visibility (50%)</span>
+      <div class="breakdown-bar-wrap">
+        <div class="breakdown-bar {% if vis_score < 50 %}bar-red{% elif vis_score < 75 %}bar-yellow{% else %}bar-green{% endif %}"
+             style="width: {{ vis_bar_pct }}%"></div>
+      </div>
+      <span class="breakdown-val">{{ vis_score }}</span>
+    </div>
+
+    {% for check in audit.checks %}
+    {% set pct = check.score %}
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        {{ check.name }}
+        {% if check.name == "Direct Answer Lead" %}(20%)
+        {% elif check.name == "Fact Density & Structure" %}(15%)
+        {% elif check.name == "Agent Discoverability" %}(15%)
+        {% else %}(15%){% endif %}
+      </span>
+      <div class="breakdown-bar-wrap">
+        <div class="breakdown-bar {% if pct < 50 %}bar-red{% elif pct < 75 %}bar-yellow{% else %}bar-green{% endif %}"
+             style="width: {{ pct }}%"></div>
+      </div>
+      <span class="breakdown-val">{{ pct }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 4. AI VISIBILITY PROBE -->
+  <div class="card">
+    <h2>AI Visibility Probe
+      <span style="float:right; font-size:0.85rem; font-weight:400; color:#718096;">
+        Score: {{ audit.visibility.score }}/100{% if audit.visibility.is_mocked %} &nbsp;<span style="color:#d69e2e;">[MOCKED]</span>{% endif %}
+      </span>
+    </h2>
+
+    <p style="font-size:0.875rem; color:#4a5568; margin-bottom:1rem;">
+      We asked an AI assistant the questions your potential customers actually type &mdash; without mentioning your brand.
+      <strong>Cited</strong> means your domain appeared in the AI&rsquo;s answer.
+      <strong>Mentioned</strong> means your brand name appeared in the answer but not as a link.
+      <strong>Absent</strong> means a competitor took your slot.
+      <em style="font-size:0.8rem; color:#718096;">Unbranded queries (where customers don&rsquo;t already know your name) are weighted 2&times; &mdash; they represent real new business.</em>
+    </p>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Query</th>
+            <th>Result</th>
+            <th>What AI Said</th>
+            <th>Sources</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for q in audit.visibility.queries %}
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">{{ q.query }}</td>
+            <td>
+              <span class="status-{{ q.status }}">{{ q.status | upper }}</span>
+            </td>
+            <td class="snippet-cell">
+              {% if q.snippet %}
+                <div class="snippet-preview">{{ q.snippet }}</div>
+                <div class="snippet-full">{{ q.snippet }}</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              {% else %}
+                <span style="color:#a0aec0; font-style:italic;">(no answer)</span>
+              {% endif %}
+            </td>
+            <td class="sources-cell">
+              {% if q.sources %}
+                {% for src in q.sources[:3] %}
+                  <a href="{{ src }}" target="_blank" rel="noopener">{{ src[:50] }}{% if src|length > 50 %}...{% endif %}</a>
+                {% endfor %}
+              {% else %}
+                (none)
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if audit.visibility.competitor_mentions %}
+    <div class="comp-chart">
+      <h3>Competitor Mentions in AI Responses</h3>
+      {% set max_count = audit.visibility.competitor_mentions.values() | max %}
+      {% for domain, count in audit.visibility.competitor_mentions.items() %}
+      <div class="comp-bar-row">
+        <span class="comp-name">{{ domain }}</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: {% if max_count > 0 %}{{ (count / max_count * 100) | round | int }}{% else %}0{% endif %}%"></div>
+        </div>
+        <span class="comp-count">{{ count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 5. THREE CHECK SECTIONS -->
+  {% for check in audit.checks %}
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">{{ check.name }}</h2>
+      <span class="check-score-display {% if check.score < 50 %}' style='color:#e53e3e{% elif check.score < 75 %}' style='color:#d69e2e{% else %}' style='color:#38a169{% endif %}">
+        {{ check.score }}<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      {% if check.name == "Direct Answer Lead" %}
+        AI assistants like ChatGPT and Perplexity extract the first paragraph of a page to form their answer.
+        If your opening copy does not immediately state who you are, what you do, and include one concrete fact,
+        AI will either skip your page or paraphrase it inaccurately &mdash; costing you citations.
+      {% elif check.name == "Fact Density & Structure" %}
+        Generative AI prefers content with verifiable facts &mdash; numbers, dates, certifications, and statistics.
+        Pages with vague marketing language score poorly in AI-synthesised answers. Structured content
+        (headings, lists, schema markup) also helps AI parse and attribute your content correctly.
+      {% elif check.name == "Agent Discoverability" %}
+        AI crawlers (GPTBot, ClaudeBot, Perplexity) respect robots.txt and look for a llms.txt file
+        (similar to robots.txt but written for language models). Blocking these bots or failing to provide
+        an llms.txt means AI systems cannot learn about your business &mdash; making you invisible in AI answers.
+      {% else %}
+        This check evaluates a key GEO factor that affects how AI assistants discover and cite your business.
+      {% endif %}
+    </p>
+    <div class="evidence-block">{{ check.evidence }}</div>
+  </div>
+  {% endfor %}
+
+  <!-- 6. FIX ROADMAP -->
+  <div class="card">
+    <h2>Fix Roadmap</h2>
+
+    <!-- 2x2 Matrix -->
+    {% set quick_wins = [] %}
+    {% set strategic = [] %}
+    {% set easy_wins = [] %}
+    {% set deprioritize = [] %}
+    {% for fix in audit.fixes %}
+      {% if fix.impact == "high" and fix.effort == "low" %}
+        {% set _ = quick_wins.append(fix.title) %}
+      {% elif fix.impact == "high" and fix.effort in ["medium", "high"] %}
+        {% set _ = strategic.append(fix.title) %}
+      {% elif fix.impact in ["low", "medium"] and fix.effort == "low" %}
+        {% set _ = easy_wins.append(fix.title) %}
+      {% else %}
+        {% set _ = deprioritize.append(fix.title) %}
+      {% endif %}
+    {% endfor %}
+
+    <div class="matrix-axis-label-row" style="margin-bottom:4px;">
+      <div class="matrix-axis-x">Low Effort</div>
+      <div class="matrix-axis-x">High Effort</div>
+    </div>
+    <div class="matrix-grid">
+      <div class="matrix-cell quick-wins">
+        <h4 style="color:#276749;">&#9889; Quick Wins</h4>
+        <p style="font-size:0.78rem; color:#276749; margin-bottom:8px;">High Impact &middot; Low Effort</p>
+        {% if quick_wins %}
+          <ul>{% for t in quick_wins %}<li>{{ t }}</li>{% endfor %}</ul>
+        {% else %}
+          <p style="font-size:0.82rem; color:#718096; font-style:italic;">None</p>
+        {% endif %}
+      </div>
+      <div class="matrix-cell strategic">
+        <h4 style="color:#2c5282;">&#127775; Strategic</h4>
+        <p style="font-size:0.78rem; color:#2c5282; margin-bottom:8px;">High Impact &middot; High Effort</p>
+        {% if strategic %}
+          <ul>{% for t in strategic %}<li>{{ t }}</li>{% endfor %}</ul>
+        {% else %}
+          <p style="font-size:0.82rem; color:#718096; font-style:italic;">None</p>
+        {% endif %}
+      </div>
+      <div class="matrix-cell easy-wins">
+        <h4 style="color:#744210;">&#128161; Easy Wins</h4>
+        <p style="font-size:0.78rem; color:#744210; margin-bottom:8px;">Low Impact &middot; Low Effort</p>
+        {% if easy_wins %}
+          <ul>{% for t in easy_wins %}<li>{{ t }}</li>{% endfor %}</ul>
+        {% else %}
+          <p style="font-size:0.82rem; color:#718096; font-style:italic;">None</p>
+        {% endif %}
+      </div>
+      <div class="matrix-cell deprioritize">
+        <h4 style="color:#4a5568;">&#128337; Deprioritize</h4>
+        <p style="font-size:0.78rem; color:#4a5568; margin-bottom:8px;">Low Impact &middot; High Effort</p>
+        {% if deprioritize %}
+          <ul>{% for t in deprioritize %}<li>{{ t }}</li>{% endfor %}</ul>
+        {% else %}
+          <p style="font-size:0.82rem; color:#718096; font-style:italic;">None</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Fix cards -->
+    {% for fix in audit.fixes %}
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">{{ fix.title }}</span>
+        <span class="badge badge-impact-{{ fix.impact }}">Impact: {{ fix.impact }}</span>
+        <span class="badge badge-effort-{{ fix.effort }}">Effort: {{ fix.effort }}</span>
+      </div>
+      <p class="fix-explanation">{{ fix.explanation }}</p>
+      <div class="copy-paste-block">{{ fix.copy_paste }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 7. APPENDIX -->
+  <div class="card">
+    <h2>Appendix &mdash; Raw Details</h2>
+    {% for check in audit.checks %}
+    <details>
+      <summary>{{ check.name }} &mdash; raw details</summary>
+      <div class="json-block">{{ check.details | tojson(indent=2) }}</div>
+    </details>
+    {% endfor %}
+
+    {% for check in audit.checks %}
+      {% if check.details.get("generated_llms_txt") %}
+      <details>
+        <summary>Generated llms.txt &mdash; {{ check.name }}</summary>
+        <div class="json-block">{{ check.details["generated_llms_txt"] }}</div>
+      </details>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <!-- 8. FOOTER -->
+  <div class="footer">
+    <p>Generated by <strong>GEO Auditor</strong> &mdash; Generative Engine Optimisation analysis tool</p>
+    <p style="margin-top:4px;">Audited: {{ audit.url }} &nbsp;|&nbsp; Overall score: {{ audit.overall_score }}/100 ({{ audit.band }})</p>
+  </div>
+
+</div><!-- /container -->
+</body>
+</html>

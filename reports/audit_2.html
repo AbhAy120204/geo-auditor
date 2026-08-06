@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEO Audit &mdash; Mr. Rooter Plumbing</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f9fa;
+    color: #1a1a2e;
+    line-height: 1.6;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+  /* -- Hero -- */
+  .hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 40px 48px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+  }
+  .hero-left { flex: 1; }
+  .hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
+  .hero .domain { color: #a0aec0; font-size: 0.9rem; margin-bottom: 12px; }
+  .hero .verdict { color: #e2e8f0; font-size: 1rem; margin-top: 12px; }
+  .hero-score { text-align: center; min-width: 140px; }
+  .score-num { font-size: 3rem; font-weight: 800; line-height: 1; }
+  .score-label { font-size: 0.85rem; color: #a0aec0; margin-top: 4px; }
+
+  /* Band badges */
+  .band-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 8px;
+  }
+  .band-Critical  { background: #fed7d7; color: #9b2335; }
+  .band-Poor      { background: #feebc8; color: #7b341e; }
+  .band-Fair      { background: #fefcbf; color: #744210; }
+  .band-Good      { background: #c6f6d5; color: #22543d; }
+  .band-Excellent { background: #bee3f8; color: #2a4365; }
+
+  /* -- Mock banner -- */
+  .mock-banner {
+    background: #fefcbf;
+    border: 2px solid #d69e2e;
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #744210;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .mock-banner .icon { font-size: 1.2rem; }
+
+  /* -- Section cards -- */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+
+  /* -- Score Breakdown -- */
+  .formula { font-size: 0.82rem; color: #718096; margin-bottom: 20px; }
+  .breakdown-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .breakdown-label { min-width: 200px; font-size: 0.9rem; color: #4a5568; }
+  .breakdown-bar-wrap { flex: 1; background: #e2e8f0; border-radius: 6px; height: 14px; overflow: hidden; }
+  .breakdown-bar { height: 100%; border-radius: 6px; transition: width 0.4s; }
+  .bar-red    { background: #fc8181; }
+  .bar-yellow { background: #f6e05e; }
+  .bar-green  { background: #68d391; }
+  .breakdown-val { min-width: 50px; text-align: right; font-size: 0.85rem; font-weight: 600; color: #2d3748; }
+
+  /* -- Probe table -- */
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th {
+    background: #f7fafc;
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #718096;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .status-cited     { background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-mentioned { background: #feebc8; color: #7b341e; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-absent    { background: #fed7d7; color: #9b2335; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-error     { background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .snippet-cell { max-width: 340px; font-size: 0.82rem; color: #4a5568; line-height: 1.5; }
+  .snippet-preview { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .snippet-full { display: none; white-space: pre-wrap; }
+  .snippet-toggle { display: inline-block; margin-top: 4px; font-size: 0.75rem; color: #3182ce; cursor: pointer; user-select: none; }
+  .snippet-toggle:hover { text-decoration: underline; }
+  .sources-cell { font-size: 0.78rem; color: #718096; }
+  .sources-cell a { color: #3182ce; text-decoration: none; display: block; }
+  .sources-cell a:hover { text-decoration: underline; }
+
+  /* Competitor chart */
+  .comp-chart { margin-top: 20px; }
+  .comp-chart h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: #4a5568; }
+  .comp-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .comp-name { min-width: 160px; font-size: 0.85rem; color: #2d3748; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .comp-bar-wrap { flex: 1; background: #e2e8f0; border-radius: 4px; height: 12px; }
+  .comp-bar { height: 100%; background: #76e4f7; border-radius: 4px; }
+  .comp-count { font-size: 0.82rem; color: #718096; min-width: 30px; text-align: right; }
+
+  /* -- Check sections -- */
+  .check-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .check-score-display { font-size: 1.3rem; font-weight: 700; }
+  .check-score-max { font-size: 0.85rem; color: #a0aec0; }
+  .why-matters { font-size: 0.9rem; color: #4a5568; margin-bottom: 14px; line-height: 1.6; }
+  .evidence-block {
+    border-left: 4px solid #f6ad55;
+    background: #fffbf0;
+    padding: 12px 16px;
+    font-style: italic;
+    font-size: 0.875rem;
+    color: #4a5568;
+    border-radius: 0 6px 6px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* -- Fix Roadmap -- */
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .matrix-cell {
+    border-radius: 8px;
+    padding: 16px;
+    border: 2px solid transparent;
+  }
+  .matrix-cell.quick-wins { background: #f0fff4; border-color: #68d391; }
+  .matrix-cell.strategic  { background: #ebf8ff; border-color: #76e4f7; }
+  .matrix-cell.easy-wins  { background: #fffff0; border-color: #f6e05e; }
+  .matrix-cell.deprioritize { background: #f7fafc; border-color: #e2e8f0; }
+  .matrix-cell h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .matrix-cell ul { padding-left: 16px; font-size: 0.85rem; color: #4a5568; }
+  .matrix-axis-x { text-align: center; font-size: 0.78rem; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .matrix-axis-label-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .fix-card {
+    background: #f7fafc;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    border-left: 4px solid #3182ce;
+  }
+  .fix-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .fix-card-title { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+  .badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .badge-impact-high   { background: #c6f6d5; color: #22543d; }
+  .badge-impact-medium { background: #feebc8; color: #7b341e; }
+  .badge-impact-low    { background: #e2e8f0; color: #4a5568; }
+  .badge-effort-low    { background: #bee3f8; color: #2a4365; }
+  .badge-effort-medium { background: #fefcbf; color: #744210; }
+  .badge-effort-high   { background: #fed7d7; color: #9b2335; }
+  .fix-explanation { font-size: 0.88rem; color: #4a5568; margin-bottom: 14px; line-height: 1.6; }
+  .copy-paste-block {
+    background: #1a1a2e;
+    color: #e2e8f0;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 0.82rem;
+    padding: 16px 18px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+  }
+
+  /* -- Appendix -- */
+  details { margin-bottom: 10px; }
+  summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #3182ce;
+    padding: 6px 0;
+    user-select: none;
+  }
+  summary:hover { text-decoration: underline; }
+  .json-block {
+    background: #1a1a2e;
+    color: #a0d5b5;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.78rem;
+    padding: 14px 16px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-top: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* -- Footer -- */
+  .footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #a0aec0;
+    margin-top: 40px;
+    padding-bottom: 40px;
+  }
+  .footer a { color: #3182ce; text-decoration: none; }
+
+  /* -- Print -- */
+  @media print {
+    .card { box-shadow: none; }
+    .hero { box-shadow: none; }
+    .copy-paste-block { white-space: pre-wrap; overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 1. HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <h1>Mr. Rooter Plumbing</h1>
+      <div class="domain">https://www.mrrooter.com</div>
+      <span class="band-badge band-Poor">Poor</span>
+      <p class="verdict">
+        
+          Significant issues found &mdash; this site is rarely cited by AI-driven search engines.
+        
+      </p>
+    </div>
+    <div class="hero-score">
+      <div class="score-num">48.5</div>
+      <div class="score-label">/ 100</div>
+      <div class="score-label" style="margin-top:6px;">GEO Score</div>
+    </div>
+  </div>
+
+  <!-- 2. MOCK BANNER -->
+  
+
+  <!-- 3. SCORE BREAKDOWN -->
+  <div class="card">
+    <h2>Score Breakdown</h2>
+    <p class="formula">Formula: AI Visibility (50%) + Direct Answer Lead (20%) + Fact Density &amp; Structure (15%) + Agent Discoverability (15%)</p>
+
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">AI Visibility (50%)</span>
+      <div class="breakdown-bar-wrap">
+        <div class="breakdown-bar bar-red"
+             style="width: 38.5%"></div>
+      </div>
+      <span class="breakdown-val">38.5</span>
+    </div>
+
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Direct Answer Lead
+        (20%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        <div class="breakdown-bar bar-red"
+             style="width: 24.0%"></div>
+      </div>
+      <span class="breakdown-val">24.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Fact Density &amp; Structure
+        (15%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        <div class="breakdown-bar bar-yellow"
+             style="width: 63.2%"></div>
+      </div>
+      <span class="breakdown-val">63.2</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Agent Discoverability
+        (15%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        <div class="breakdown-bar bar-green"
+             style="width: 100.0%"></div>
+      </div>
+      <span class="breakdown-val">100.0</span>
+    </div>
+    
+  </div>
+
+  <!-- 4. AI VISIBILITY PROBE -->
+  <div class="card">
+    <h2>AI Visibility Probe
+      <span style="float:right; font-size:0.85rem; font-weight:400; color:#718096;">
+        Score: 38.5/100
+      </span>
+    </h2>
+
+    <p style="font-size:0.875rem; color:#4a5568; margin-bottom:1rem;">
+      We asked an AI assistant the questions your potential customers actually type &mdash; without mentioning your brand.
+      <strong>Cited</strong> means your domain appeared in the AI&rsquo;s answer.
+      <strong>Mentioned</strong> means your brand name appeared in the answer but not as a link.
+      <strong>Absent</strong> means a competitor took your slot.
+      <em style="font-size:0.8rem; color:#718096;">Unbranded queries (where customers don&rsquo;t already know your name) are weighted 2&times; &mdash; they represent real new business.</em>
+    </p>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Query</th>
+            <th>Result</th>
+            <th>What AI Said</th>
+            <th>Sources</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">emergency plumbing service</td>
+            <td>
+              <span class="status-cited">CITED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">An emergency plumbing service addresses urgent plumbing issues that pose an immediate threat to your home, health, or water supply, and cannot wait for regular business hours. These services typically operate 24/7, with plumbers available on-call to provide rapid assistance.
+
+**Common Plumbing Emergencies**
+Situations that usually qualify as plumbing emergencies include:
+*   **Burst or Ruptured Pipes** These can cause rapid and uncontrolled water flow, leading to significant structural damage. Freezing temperatures can often lead to burst pipes.
+*   **Sewage Backups** If sewage backs up into your drains, toilets, or tubs, it presents a serious health hazard due to harmful bacteria and pathogens.
+*   **Major Leaks and Uncontrolled Flooding** Any leak that is actively spraying water or spreading through walls and ceilings, or widespread flooding, is an emergency.
+*   **No Water Supply to the Entire Home** A complete loss of water could indicate a main line break or a major valve failure, which can erode soil around your foundation.
+*   **Water Heater Malfunctions** Leaking or failed water heaters can cause flooding and, if gas-powered, pose a fire hazard.
+*   **Gas Leaks** If you smell gas, it&#39;s a serious emergency requiring immediate action and professional help.
+*   **Overflowing Toilets** A toilet that continues to run and overflow despite attempts to stop it is an urgent problem.
+*   **Sump Pump Failure** This can lead to basement flooding, especially during heavy rain.
+
+**What to Do During a Plumbing Emergency**
+Before a professional arrives, taking immediate action can help minimize damage:
+1.  **Shut Off the Water Supply** Locate your home&#39;s main water shut-off valve and turn it clockwise to stop the water flow to your entire home. For isolated issues like a leaking sink or toilet, use the fixture-specific shut-off valves.
+2.  **Turn Off Your Water Heater** If there&#39;s a major leak or burst pipe, shut off your water heater to prevent damage from overheating. For electric heaters, flip the circuit breaker; for gas heaters, turn the gas control valve to &#34;PILOT&#34; or &#34;OFF&#34;.
+3.  **Cut the Power (if applicable)** If water is near electrical outlets, panels, or appliances, turn off the electricity to prevent shock hazards.
+4.  **Contain the Water** Use buckets, towels, mops, or a wet/dry vacuum to absorb and contain spreading water. Move furniture, electronics, and valuables away from the affected area.
+5.  **Relieve System Pressure** After shutting off the main water supply, open both hot and cold taps at several sinks and flush toilets once to drain any remaining water from the pipes.
+6.  **Document Damage** Take photos or videos of the damage for insurance purposes before cleanup.
+7.  **Call a Professional** Contact a licensed emergency plumber immediately. It&#39;s advisable to have their number readily available.
+
+**Finding an Emergency Plumbing Service**
+When faced with an emergency, you should call a professional plumber right away. Many plumbing companies offer 24/7 emergency services. You can search online for &#34;emergency plumber near me&#34; or check local directories.</div>
+                <div class="snippet-full">An emergency plumbing service addresses urgent plumbing issues that pose an immediate threat to your home, health, or water supply, and cannot wait for regular business hours. These services typically operate 24/7, with plumbers available on-call to provide rapid assistance.
+
+**Common Plumbing Emergencies**
+Situations that usually qualify as plumbing emergencies include:
+*   **Burst or Ruptured Pipes** These can cause rapid and uncontrolled water flow, leading to significant structural damage. Freezing temperatures can often lead to burst pipes.
+*   **Sewage Backups** If sewage backs up into your drains, toilets, or tubs, it presents a serious health hazard due to harmful bacteria and pathogens.
+*   **Major Leaks and Uncontrolled Flooding** Any leak that is actively spraying water or spreading through walls and ceilings, or widespread flooding, is an emergency.
+*   **No Water Supply to the Entire Home** A complete loss of water could indicate a main line break or a major valve failure, which can erode soil around your foundation.
+*   **Water Heater Malfunctions** Leaking or failed water heaters can cause flooding and, if gas-powered, pose a fire hazard.
+*   **Gas Leaks** If you smell gas, it&#39;s a serious emergency requiring immediate action and professional help.
+*   **Overflowing Toilets** A toilet that continues to run and overflow despite attempts to stop it is an urgent problem.
+*   **Sump Pump Failure** This can lead to basement flooding, especially during heavy rain.
+
+**What to Do During a Plumbing Emergency**
+Before a professional arrives, taking immediate action can help minimize damage:
+1.  **Shut Off the Water Supply** Locate your home&#39;s main water shut-off valve and turn it clockwise to stop the water flow to your entire home. For isolated issues like a leaking sink or toilet, use the fixture-specific shut-off valves.
+2.  **Turn Off Your Water Heater** If there&#39;s a major leak or burst pipe, shut off your water heater to prevent damage from overheating. For electric heaters, flip the circuit breaker; for gas heaters, turn the gas control valve to &#34;PILOT&#34; or &#34;OFF&#34;.
+3.  **Cut the Power (if applicable)** If water is near electrical outlets, panels, or appliances, turn off the electricity to prevent shock hazards.
+4.  **Contain the Water** Use buckets, towels, mops, or a wet/dry vacuum to absorb and contain spreading water. Move furniture, electronics, and valuables away from the affected area.
+5.  **Relieve System Pressure** After shutting off the main water supply, open both hot and cold taps at several sinks and flush toilets once to drain any remaining water from the pipes.
+6.  **Document Damage** Take photos or videos of the damage for insurance purposes before cleanup.
+7.  **Call a Professional** Contact a licensed emergency plumber immediately. It&#39;s advisable to have their number readily available.
+
+**Finding an Emergency Plumbing Service**
+When faced with an emergency, you should call a professional plumber right away. Many plumbing companies offer 24/7 emergency services. You can search online for &#34;emergency plumber near me&#34; or check local directories.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  <a href="angi.com" target="_blank" rel="noopener">angi.com</a>
+                
+                  <a href="goffheating.com" target="_blank" rel="noopener">goffheating.com</a>
+                
+                  <a href="molbergplumbing.com" target="_blank" rel="noopener">molbergplumbing.com</a>
+                
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">clogged drain repair cost</td>
+            <td>
+              <span class="status-absent">ABSENT</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">The cost of repairing a clogged drain can vary significantly, typically ranging from $100 to over $1,000, depending on several key factors. A national average for professional drain cleaning is around $246, with most jobs falling between $147 and $352.
+
+Here&#39;s a breakdown of typical costs and influencing factors:
+
+**Average Costs by Clog Type/Method:**
+*   **Simple clogs** (e.g., hairball in a sink trap) often have a fixed rate, averaging around $230, and generally range from $150 to $350. These often involve basic drain snaking and can cost between $110 and $275.
+*   **Fixture-level clogs** (e.g., in a sink, tub, or toilet) typically cost between $200 and $400.
+    *   Kitchen sink drains: $100 to $250.
+    *   Bathroom sink or tub drains: $75 to $200.
+    *   Toilet clogs: $100 to $275.
+*   **More complex or difficult jobs** often incur hourly rates, which can range from $45 to $200 per hour for labor.
+*   **Main sewer line clearing** is more expensive, generally ranging from $200 to $800, and can exceed $800 for severe blockages.
+*   **Hydro-jetting service**, used for stubborn blockages like heavy grease or tree roots, typically costs between $350 and $770, but can go up to $900.
+*   **Camera inspection** to diagnose deep or hidden clogs can add $250 to $900 to the cost, or $150 to $350 when used alone.
+
+**Factors Influencing the Cost:**
+*   **Severity and Location of the Clog:** A simple clog near the drain opening is less expensive than a severe blockage deep within the main line, which requires more effort and specialized equipment. Clogs that are harder to access, such as those in walls or underground pipes, will also increase the cost.
+*   **Type of Drain Being Cleaned:** Kitchen sink drains, bathroom sink/tub drains, toilet clogs, floor drains, and especially main sewer lines, all have different cost ranges due to varying complexity.
+*   **Cleaning Method Used:** Basic snaking is more cost-effective than advanced methods like hydro-jetting or video inspection.
+*   **Time of Service:** Emergency or after-hours services (nights, weekends, holidays) can add significant fees, typically ranging from $100 to $300.
+*   **Labor Rates:** Plumbers generally charge between $75 and $250 per hour, depending on the region and job complexity. Some plumbers may offer fixed service call fees.
+*   **Additional Services:** Costs can increase if other issues are discovered, such as damaged pipes, which may require repair or replacement. Repairing minor cracks or leaks can cost $150 to $850, while root intrusion repair might range from $450 to $2,500.
+*   **Plumber&#39;s Expertise:** Highly skilled and reputable plumbers may charge more, but their expertise can ensure the job is done correctly and efficiently, potentially preventing recurring issues.
+
+It&#39;s advisable to get upfront estimates from plumbers to understand the cost before committing to the service.</div>
+                <div class="snippet-full">The cost of repairing a clogged drain can vary significantly, typically ranging from $100 to over $1,000, depending on several key factors. A national average for professional drain cleaning is around $246, with most jobs falling between $147 and $352.
+
+Here&#39;s a breakdown of typical costs and influencing factors:
+
+**Average Costs by Clog Type/Method:**
+*   **Simple clogs** (e.g., hairball in a sink trap) often have a fixed rate, averaging around $230, and generally range from $150 to $350. These often involve basic drain snaking and can cost between $110 and $275.
+*   **Fixture-level clogs** (e.g., in a sink, tub, or toilet) typically cost between $200 and $400.
+    *   Kitchen sink drains: $100 to $250.
+    *   Bathroom sink or tub drains: $75 to $200.
+    *   Toilet clogs: $100 to $275.
+*   **More complex or difficult jobs** often incur hourly rates, which can range from $45 to $200 per hour for labor.
+*   **Main sewer line clearing** is more expensive, generally ranging from $200 to $800, and can exceed $800 for severe blockages.
+*   **Hydro-jetting service**, used for stubborn blockages like heavy grease or tree roots, typically costs between $350 and $770, but can go up to $900.
+*   **Camera inspection** to diagnose deep or hidden clogs can add $250 to $900 to the cost, or $150 to $350 when used alone.
+
+**Factors Influencing the Cost:**
+*   **Severity and Location of the Clog:** A simple clog near the drain opening is less expensive than a severe blockage deep within the main line, which requires more effort and specialized equipment. Clogs that are harder to access, such as those in walls or underground pipes, will also increase the cost.
+*   **Type of Drain Being Cleaned:** Kitchen sink drains, bathroom sink/tub drains, toilet clogs, floor drains, and especially main sewer lines, all have different cost ranges due to varying complexity.
+*   **Cleaning Method Used:** Basic snaking is more cost-effective than advanced methods like hydro-jetting or video inspection.
+*   **Time of Service:** Emergency or after-hours services (nights, weekends, holidays) can add significant fees, typically ranging from $100 to $300.
+*   **Labor Rates:** Plumbers generally charge between $75 and $250 per hour, depending on the region and job complexity. Some plumbers may offer fixed service call fees.
+*   **Additional Services:** Costs can increase if other issues are discovered, such as damaged pipes, which may require repair or replacement. Repairing minor cracks or leaks can cost $150 to $850, while root intrusion repair might range from $450 to $2,500.
+*   **Plumber&#39;s Expertise:** Highly skilled and reputable plumbers may charge more, but their expertise can ensure the job is done correctly and efficiently, potentially preventing recurring issues.
+
+It&#39;s advisable to get upfront estimates from plumbers to understand the cost before committing to the service.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  <a href="cottrellplumbingheatingandair.com" target="_blank" rel="noopener">cottrellplumbingheatingandair.com</a>
+                
+                  <a href="jimsplumbingnow.com" target="_blank" rel="noopener">jimsplumbingnow.com</a>
+                
+                  <a href="callhomerangers.com" target="_blank" rel="noopener">callhomerangers.com</a>
+                
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">water heater replacement company</td>
+            <td>
+              <span class="status-absent">ABSENT</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">When looking for a water heater replacement company, it&#39;s highly recommended to choose a local, licensed, and insured professional. These companies can help you navigate the replacement process for both traditional tank and tankless water heaters.
+
+Here are key factors to consider when choosing a water heater replacement company:
+*   **Look for Trusted Professionals** Research the company&#39;s experience and reputation, verify their state license or certificate, and check their rating with the Better Business Bureau. Ask if employees undergo background checks, have specialized training, and if they guarantee their work and uphold warranties.
+*   **Seek Out Same-Day Installation** If your water heater is broken, prompt service is crucial. Many reputable providers offer same-day installation and can also assist with repairs. They should also haul away your old unit and clean the work area.
+*   **Ask About Flexible Financing and Money-Saving Options** Water heater replacement can be an unexpected expense, so inquire about financing options and information on rebate programs, which can vary by location.
+*   **Get Multiple Quotes** Contact three to five highly-rated companies to assess your home and provide quotes. This allows you to compare prices and service offerings and ensures you get fair market value.
+*   **Consider Efficiency Ratings** Water heating accounts for approximately 20% of a home&#39;s energy use. Inquire about the efficiency ratings of different units, as more efficient models can lead to significant long-term energy savings, despite a potentially higher upfront cost.
+*   **Think About Future Needs** Consider potential changes in your hot water demands five or ten years down the road, such as adding to your home or finishing unused spaces, to ensure you select an appropriately sized system.
+*   **Understand the Full Cost** A good installer will evaluate your home, discuss your hot water needs, and present various options with clear explanations of tradeoffs. You should know the exact installation cost upfront, including the unit, labor, necessary modifications (like gas line resizing or venting changes), permit fees, and old unit removal.
+
+Some companies offer comprehensive plumbing and HVAC services, including water heater repair, replacement, and maintenance for both standard and tankless units. They may also offer competitive pricing, a range of brands and models, and extended warranty packages.
+
+Without your location, I cannot provide specific company recommendations. To find water heater replacement companies in your area, please provide your city and state.</div>
+                <div class="snippet-full">When looking for a water heater replacement company, it&#39;s highly recommended to choose a local, licensed, and insured professional. These companies can help you navigate the replacement process for both traditional tank and tankless water heaters.
+
+Here are key factors to consider when choosing a water heater replacement company:
+*   **Look for Trusted Professionals** Research the company&#39;s experience and reputation, verify their state license or certificate, and check their rating with the Better Business Bureau. Ask if employees undergo background checks, have specialized training, and if they guarantee their work and uphold warranties.
+*   **Seek Out Same-Day Installation** If your water heater is broken, prompt service is crucial. Many reputable providers offer same-day installation and can also assist with repairs. They should also haul away your old unit and clean the work area.
+*   **Ask About Flexible Financing and Money-Saving Options** Water heater replacement can be an unexpected expense, so inquire about financing options and information on rebate programs, which can vary by location.
+*   **Get Multiple Quotes** Contact three to five highly-rated companies to assess your home and provide quotes. This allows you to compare prices and service offerings and ensures you get fair market value.
+*   **Consider Efficiency Ratings** Water heating accounts for approximately 20% of a home&#39;s energy use. Inquire about the efficiency ratings of different units, as more efficient models can lead to significant long-term energy savings, despite a potentially higher upfront cost.
+*   **Think About Future Needs** Consider potential changes in your hot water demands five or ten years down the road, such as adding to your home or finishing unused spaces, to ensure you select an appropriately sized system.
+*   **Understand the Full Cost** A good installer will evaluate your home, discuss your hot water needs, and present various options with clear explanations of tradeoffs. You should know the exact installation cost upfront, including the unit, labor, necessary modifications (like gas line resizing or venting changes), permit fees, and old unit removal.
+
+Some companies offer comprehensive plumbing and HVAC services, including water heater repair, replacement, and maintenance for both standard and tankless units. They may also offer competitive pricing, a range of brands and models, and extended warranty packages.
+
+Without your location, I cannot provide specific company recommendations. To find water heater replacement companies in your area, please provide your city and state.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  <a href="homedepot.com" target="_blank" rel="noopener">homedepot.com</a>
+                
+                  <a href="giannoneplumbinghvac.com" target="_blank" rel="noopener">giannoneplumbinghvac.com</a>
+                
+                  <a href="ventureplumbinginc.net" target="_blank" rel="noopener">ventureplumbinginc.net</a>
+                
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">pipe burst professional help</td>
+            <td>
+              <span class="status-absent">ABSENT</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">If you&#39;re dealing with a burst pipe, immediate professional help is crucial to prevent extensive water damage to your property. Many plumbing companies offer 24/7 emergency services specifically for burst pipes.
+
+**What to do immediately if you have a burst pipe:**
+*   **Shut off the main water supply.** This is the most critical step to stop the flow of water and limit damage. If you don&#39;t know where your main shutoff valve is, you may need to turn off the water at the street.
+*   **Turn off electricity if necessary.** If water is pooling near electrical outlets, appliances, or walls with wiring, shut off power to the affected areas at the breaker panel to reduce the risk of shock or fire.
+*   **Drain remaining water.** Open cold and hot faucets throughout your home to relieve pressure and allow any water remaining in the pipes to drain out. Flushing toilets can also help.
+*   **Avoid using plumbing fixtures.** Do not use sinks, showers, or other plumbing fixtures until the burst pipe has been repaired.
+*   **Protect valuables.** Move any valuable items away from the affected area to prevent further damage.
+
+**Finding professional help for a burst pipe:**
+*   **Search for &#34;emergency plumbing services&#34; or &#34;burst pipe repair&#34;** along with your location. Many companies specialize in emergency plumbing and are available around the clock.
+*   **Look for licensed and insured plumbers.** This ensures they meet state standards for training and safety and that you are protected in case of accidental damage.
+*   **Check online reviews and testimonials.** Platforms like Google, Yelp, or Angi can provide insights into a company&#39;s reliability, punctuality, and quality of work.
+*   **Ask for referrals** from neighbors, friends, or local hardware stores.
+*   **Inquire about upfront pricing and guarantees.** Reputable plumbers should provide a clear diagnosis and estimate before starting work, and often guarantee their repairs.
+
+Companies like Roto-Rooter offer 24/7 emergency plumbing services nationwide. Many local plumbers also provide urgent care, such as Joe the Plumber in Houston, Plumb &amp; Order in Austin, Air Comfort Solutions and Plumbing Masters LLC in Oklahoma City, DFW PipePros in Dallas-Fort Worth, Quality Plumbing in Kansas City, Radiant Plumbing &amp; Air Conditioning in Austin and San Antonio, PRO Plumbers in Folsom/Cameron Park, Maverick Plumbing Technicians in Santa Cruz County, Grapids Home Services in Grand Rapids, Best Rate Plumbing in Lancaster, SC, and PRO Plumbers of Rancho Cucamonga.</div>
+                <div class="snippet-full">If you&#39;re dealing with a burst pipe, immediate professional help is crucial to prevent extensive water damage to your property. Many plumbing companies offer 24/7 emergency services specifically for burst pipes.
+
+**What to do immediately if you have a burst pipe:**
+*   **Shut off the main water supply.** This is the most critical step to stop the flow of water and limit damage. If you don&#39;t know where your main shutoff valve is, you may need to turn off the water at the street.
+*   **Turn off electricity if necessary.** If water is pooling near electrical outlets, appliances, or walls with wiring, shut off power to the affected areas at the breaker panel to reduce the risk of shock or fire.
+*   **Drain remaining water.** Open cold and hot faucets throughout your home to relieve pressure and allow any water remaining in the pipes to drain out. Flushing toilets can also help.
+*   **Avoid using plumbing fixtures.** Do not use sinks, showers, or other plumbing fixtures until the burst pipe has been repaired.
+*   **Protect valuables.** Move any valuable items away from the affected area to prevent further damage.
+
+**Finding professional help for a burst pipe:**
+*   **Search for &#34;emergency plumbing services&#34; or &#34;burst pipe repair&#34;** along with your location. Many companies specialize in emergency plumbing and are available around the clock.
+*   **Look for licensed and insured plumbers.** This ensures they meet state standards for training and safety and that you are protected in case of accidental damage.
+*   **Check online reviews and testimonials.** Platforms like Google, Yelp, or Angi can provide insights into a company&#39;s reliability, punctuality, and quality of work.
+*   **Ask for referrals** from neighbors, friends, or local hardware stores.
+*   **Inquire about upfront pricing and guarantees.** Reputable plumbers should provide a clear diagnosis and estimate before starting work, and often guarantee their repairs.
+
+Companies like Roto-Rooter offer 24/7 emergency plumbing services nationwide. Many local plumbers also provide urgent care, such as Joe the Plumber in Houston, Plumb &amp; Order in Austin, Air Comfort Solutions and Plumbing Masters LLC in Oklahoma City, DFW PipePros in Dallas-Fort Worth, Quality Plumbing in Kansas City, Radiant Plumbing &amp; Air Conditioning in Austin and San Antonio, PRO Plumbers in Folsom/Cameron Park, Maverick Plumbing Technicians in Santa Cruz County, Grapids Home Services in Grand Rapids, Best Rate Plumbing in Lancaster, SC, and PRO Plumbers of Rancho Cucamonga.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  <a href="joetheplumber.net" target="_blank" rel="noopener">joetheplumber.net</a>
+                
+                  <a href="plumbandorder.com" target="_blank" rel="noopener">plumbandorder.com</a>
+                
+                  <a href="radiantplumbing.com" target="_blank" rel="noopener">radiantplumbing.com</a>
+                
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">toilet running constantly fix</td>
+            <td>
+              <span class="status-absent">ABSENT</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">A constantly running toilet is a common household plumbing issue that wastes water and can lead to higher utility bills. Often, it can be resolved with simple DIY fixes.
+
+**Common Causes of a Running Toilet:**
+The continuous flow of water usually indicates an internal leak in the toilet&#39;s tank, causing the fill valve to constantly refill it. The most frequent culprits include:
+*   **Faulty Flapper** The rubber flapper at the bottom of the tank lifts to allow water into the bowl when flushed and then seals the opening. If it&#39;s worn, warped, cracked, or has mineral buildup, it won&#39;t seal properly, letting water leak into the bowl. This is the most common cause and often the easiest and cheapest to fix.
+*   **Improper Float Height** The float (either a ball on an arm or a cup around the fill valve) signals the fill valve to stop filling the tank when the water reaches a certain level. If the float is set too high, the water level will rise above the overflow tube, causing water to continuously spill into it and down into the bowl.
+*   **Faulty Fill Valve** Also known as the ballcock, the fill valve controls the water flowing into the tank after a flush. If it&#39;s malfunctioning, clogged with sediment, or worn out, it may not shut off properly, leading to a constant flow of water. You might hear a constant hissing sound if the fill valve is the issue.
+*   **Tangled or Misadjusted Chain** The chain connects the flush handle to the flapper. If it&#39;s too tight, too loose, or tangled, it can prevent the flapper from sealing correctly.
+*   **Mispositioned Refill Tube** The small refill tube directs water into the overflow tube to refill the bowl after a flush. If it&#39;s positioned too low or submerged in the water, it can siphon water out of the tank, causing the fill valve to cycle continuously.
+
+**How to Diagnose and Fix a Running Toilet:**
+
+Before starting, turn off the water supply to the toilet using the shut-off valve located on the wall behind it. Flush the toilet to empty the tank.
+
+1.  **Check the Flapper:**
+    *   Inspect the flapper for any visible signs of wear, cracks, warping, or mineral deposits.
+    *   Ensure the flapper sits flat and creates a proper seal over the flush valve opening.
+    *   **Food Coloring Test:** Add a few drops of food coloring to the tank water. Wait 20-30 minutes without flushing. If color appears in the bowl, the flapper isn&#39;t sealing correctly and needs to be cleaned or replaced.
+    *   **Fix:** Clean any grime or mineral buildup from the flapper and its seat. If the flapper is damaged, replace it. Universal flappers are widely available and relatively easy to install.
+
+2.  **Inspect and Adjust the Chain:**
+    *   Check the chain connecting the flush handle to the flapper. It should have a small amount of slack (about half an inch) when the flapper is closed.
+    *   **Fix:** Adjust the chain&#39;s length if it&#39;s too tight (holding the flapper open) or too loose (getting caught or preventing a full lift). Untangle any knots.
+
+3.  **Check and Adjust the Float:**
+    *   The water level in the tank should typically be about an inch below the top of the overflow tube. If it&#39;s higher, water will continuously spill into the overflow tube.
+    *   **Fix:** For ball-style floats, gently bend the float arm downwards. For cup-style floats, adjust the clip on the fill valve shaft to lower the water level. Flush the toilet after each adjustment to check if the fill valve stops promptly.
+
+4.  **Examine the Refill Tube:**
+    *   Ensure the small refill tube is positioned correctly, directing water into the overflow tube without being submerged.
+    *   **Fix:** Reposition the refill tube so it rests just above the overflow opening, using a clip to keep it steady if necessary.
+
+5.  **Inspect and Clean the Fill Valve:**
+    *   If the water level isn&#39;t overflowing but the toilet is still running, the fill valve may be the problem. Listen for a constant hissing sound.
+    *   **Cleaning:** Sediment or debris can get lodged in the fill valve, preventing it from shutting off. To clean it, turn off the water, flush the toilet, and then follow your fill valve&#39;s specific instructions for cleaning (often involves removing a cap and flushing water through it).
+    *   **Fix:** If cleaning doesn&#39;t resolve the issue, the fill valve may need to be replaced.
+
+If these steps don&#39;t resolve the issue, or if you&#39;re uncomfortable performing the repairs, it&#39;s best to call a licensed plumber to prevent further water waste and potential damage. A running toilet can waste up to 200 gallons of water per day, leading to significant increases in your water bill.</div>
+                <div class="snippet-full">A constantly running toilet is a common household plumbing issue that wastes water and can lead to higher utility bills. Often, it can be resolved with simple DIY fixes.
+
+**Common Causes of a Running Toilet:**
+The continuous flow of water usually indicates an internal leak in the toilet&#39;s tank, causing the fill valve to constantly refill it. The most frequent culprits include:
+*   **Faulty Flapper** The rubber flapper at the bottom of the tank lifts to allow water into the bowl when flushed and then seals the opening. If it&#39;s worn, warped, cracked, or has mineral buildup, it won&#39;t seal properly, letting water leak into the bowl. This is the most common cause and often the easiest and cheapest to fix.
+*   **Improper Float Height** The float (either a ball on an arm or a cup around the fill valve) signals the fill valve to stop filling the tank when the water reaches a certain level. If the float is set too high, the water level will rise above the overflow tube, causing water to continuously spill into it and down into the bowl.
+*   **Faulty Fill Valve** Also known as the ballcock, the fill valve controls the water flowing into the tank after a flush. If it&#39;s malfunctioning, clogged with sediment, or worn out, it may not shut off properly, leading to a constant flow of water. You might hear a constant hissing sound if the fill valve is the issue.
+*   **Tangled or Misadjusted Chain** The chain connects the flush handle to the flapper. If it&#39;s too tight, too loose, or tangled, it can prevent the flapper from sealing correctly.
+*   **Mispositioned Refill Tube** The small refill tube directs water into the overflow tube to refill the bowl after a flush. If it&#39;s positioned too low or submerged in the water, it can siphon water out of the tank, causing the fill valve to cycle continuously.
+
+**How to Diagnose and Fix a Running Toilet:**
+
+Before starting, turn off the water supply to the toilet using the shut-off valve located on the wall behind it. Flush the toilet to empty the tank.
+
+1.  **Check the Flapper:**
+    *   Inspect the flapper for any visible signs of wear, cracks, warping, or mineral deposits.
+    *   Ensure the flapper sits flat and creates a proper seal over the flush valve opening.
+    *   **Food Coloring Test:** Add a few drops of food coloring to the tank water. Wait 20-30 minutes without flushing. If color appears in the bowl, the flapper isn&#39;t sealing correctly and needs to be cleaned or replaced.
+    *   **Fix:** Clean any grime or mineral buildup from the flapper and its seat. If the flapper is damaged, replace it. Universal flappers are widely available and relatively easy to install.
+
+2.  **Inspect and Adjust the Chain:**
+    *   Check the chain connecting the flush handle to the flapper. It should have a small amount of slack (about half an inch) when the flapper is closed.
+    *   **Fix:** Adjust the chain&#39;s length if it&#39;s too tight (holding the flapper open) or too loose (getting caught or preventing a full lift). Untangle any knots.
+
+3.  **Check and Adjust the Float:**
+    *   The water level in the tank should typically be about an inch below the top of the overflow tube. If it&#39;s higher, water will continuously spill into the overflow tube.
+    *   **Fix:** For ball-style floats, gently bend the float arm downwards. For cup-style floats, adjust the clip on the fill valve shaft to lower the water level. Flush the toilet after each adjustment to check if the fill valve stops promptly.
+
+4.  **Examine the Refill Tube:**
+    *   Ensure the small refill tube is positioned correctly, directing water into the overflow tube without being submerged.
+    *   **Fix:** Reposition the refill tube so it rests just above the overflow opening, using a clip to keep it steady if necessary.
+
+5.  **Inspect and Clean the Fill Valve:**
+    *   If the water level isn&#39;t overflowing but the toilet is still running, the fill valve may be the problem. Listen for a constant hissing sound.
+    *   **Cleaning:** Sediment or debris can get lodged in the fill valve, preventing it from shutting off. To clean it, turn off the water, flush the toilet, and then follow your fill valve&#39;s specific instructions for cleaning (often involves removing a cap and flushing water through it).
+    *   **Fix:** If cleaning doesn&#39;t resolve the issue, the fill valve may need to be replaced.
+
+If these steps don&#39;t resolve the issue, or if you&#39;re uncomfortable performing the repairs, it&#39;s best to call a licensed plumber to prevent further water waste and potential damage. A running toilet can waste up to 200 gallons of water per day, leading to significant increases in your water bill.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  <a href="abchomeandcommercial.com" target="_blank" rel="noopener">abchomeandcommercial.com</a>
+                
+                  <a href="plumbingplusny.com" target="_blank" rel="noopener">plumbingplusny.com</a>
+                
+                  <a href="cooleys-inc.com" target="_blank" rel="noopener">cooleys-inc.com</a>
+                
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">Mr. Rooter Plumbing reviews</td>
+            <td>
+              <span class="status-cited">CITED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">Mr. Rooter Plumbing receives mixed reviews from customers, with common themes emerging around service quality, pricing, staff professionalism, and customer communication. While many customers report positive experiences, others express significant concerns.
+
+**Positive Aspects:**
+
+*   **Professionalism and Efficiency:** Numerous reviews praise the professionalism, knowledge, and efficiency of Mr. Rooter technicians. Customers often highlight technicians who arrive on time, explain the work thoroughly, and complete repairs effectively.
+*   **Responsiveness and Emergency Service:** Mr. Rooter is frequently commended for its quick response times, particularly for emergency plumbing issues. Some customers appreciate the 24/7 availability and the lack of overtime charges for after-hours service.
+*   **Quality Work:** Many clients report satisfaction with the quality of the plumbing work performed, with issues resolved to their satisfaction.
+*   **Honesty and Transparency (in some cases):** Some positive feedback mentions honest assessments and fair pricing, with technicians only recommending necessary repairs.
+
+**Negative Aspects:**
+
+*   **Pricing Concerns:** A recurring negative theme is the perception of excessive or disproportionate costs for services. Some customers report high charges for relatively simple repairs, and some experiences include unexpected high quotes or non-refundable down payments.
+*   **Customer Service and Communication Issues:** While some find communication good, others report difficulties reaching the company or experiencing a lack of responsiveness and transparency from customer service.
+*   **Service Quality Inconsistencies and Property Damage:** A few reviews mention ambiguous service quality, with some extreme cases detailing property damage caused by technicians during repairs. There are also instances of incorrect service being provided.
+
+**Overall Sentiment:**
+
+Review platforms like Angi and HomeAdvisor show specific Mr. Rooter Plumbing locations with overall ratings around 4.5 out of 5 stars, indicating a generally positive reception in those areas. However, Trustpilot presents a more ambiguous picture, with a lower overall rating and a significant number of negative reviews citing issues with pricing, customer service, and even property damage. BestCompany.com highlights their commitment to customer experience, emphasizing quick, friendly, and fair service with no overtime charges.
+
+In summary, Mr. Rooter Plumbing appears to offer prompt and professional service according to many customers, especially in emergency situations. However, potential customers should be aware of the varying experiences regarding pricing and ensure clear communication and understanding of costs before proceeding with services.</div>
+                <div class="snippet-full">Mr. Rooter Plumbing receives mixed reviews from customers, with common themes emerging around service quality, pricing, staff professionalism, and customer communication. While many customers report positive experiences, others express significant concerns.
+
+**Positive Aspects:**
+
+*   **Professionalism and Efficiency:** Numerous reviews praise the professionalism, knowledge, and efficiency of Mr. Rooter technicians. Customers often highlight technicians who arrive on time, explain the work thoroughly, and complete repairs effectively.
+*   **Responsiveness and Emergency Service:** Mr. Rooter is frequently commended for its quick response times, particularly for emergency plumbing issues. Some customers appreciate the 24/7 availability and the lack of overtime charges for after-hours service.
+*   **Quality Work:** Many clients report satisfaction with the quality of the plumbing work performed, with issues resolved to their satisfaction.
+*   **Honesty and Transparency (in some cases):** Some positive feedback mentions honest assessments and fair pricing, with technicians only recommending necessary repairs.
+
+**Negative Aspects:**
+
+*   **Pricing Concerns:** A recurring negative theme is the perception of excessive or disproportionate costs for services. Some customers report high charges for relatively simple repairs, and some experiences include unexpected high quotes or non-refundable down payments.
+*   **Customer Service and Communication Issues:** While some find communication good, others report difficulties reaching the company or experiencing a lack of responsiveness and transparency from customer service.
+*   **Service Quality Inconsistencies and Property Damage:** A few reviews mention ambiguous service quality, with some extreme cases detailing property damage caused by technicians during repairs. There are also instances of incorrect service being provided.
+
+**Overall Sentiment:**
+
+Review platforms like Angi and HomeAdvisor show specific Mr. Rooter Plumbing locations with overall ratings around 4.5 out of 5 stars, indicating a generally positive reception in those areas. However, Trustpilot presents a more ambiguous picture, with a lower overall rating and a significant number of negative reviews citing issues with pricing, customer service, and even property damage. BestCompany.com highlights their commitment to customer experience, emphasizing quick, friendly, and fair service with no overtime charges.
+
+In summary, Mr. Rooter Plumbing appears to offer prompt and professional service according to many customers, especially in emergency situations. However, potential customers should be aware of the varying experiences regarding pricing and ensure clear communication and understanding of costs before proceeding with services.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  <a href="mrrooter.com" target="_blank" rel="noopener">mrrooter.com</a>
+                
+                  <a href="angi.com" target="_blank" rel="noopener">angi.com</a>
+                
+                  <a href="homeadvisor.com" target="_blank" rel="noopener">homeadvisor.com</a>
+                
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">Mr. Rooter contact number</td>
+            <td>
+              <span class="status-cited">CITED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">You can contact Mr. Rooter Plumbing at 1-833-785-6698. This number is available 24/7.
+
+Please note that Mr. Rooter has local franchises, and specific locations may have their own direct contact numbers. For example:
+*   Mr. Rooter Plumbing of Pittsburgh can be reached at 412-630-8369 or 412-515-8300.
+*   Mr. Rooter Plumbing in Riverside, CA, has a phone number of 951-614-6350.
+*   For services in San Antonio, Texas, you can contact Mr. Rooter Plumbing at (210) 468-7991.
+*   Mr. Rooter of Oklahoma City can be reached at (405) 947-3100.
+*   Mr. Rooter Plumbing in Renton, WA, has a number of (425) 656-9077.</div>
+                <div class="snippet-full">You can contact Mr. Rooter Plumbing at 1-833-785-6698. This number is available 24/7.
+
+Please note that Mr. Rooter has local franchises, and specific locations may have their own direct contact numbers. For example:
+*   Mr. Rooter Plumbing of Pittsburgh can be reached at 412-630-8369 or 412-515-8300.
+*   Mr. Rooter Plumbing in Riverside, CA, has a phone number of 951-614-6350.
+*   For services in San Antonio, Texas, you can contact Mr. Rooter Plumbing at (210) 468-7991.
+*   Mr. Rooter of Oklahoma City can be reached at (405) 947-3100.
+*   Mr. Rooter Plumbing in Renton, WA, has a number of (425) 656-9077.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  <a href="mrrooter.com" target="_blank" rel="noopener">mrrooter.com</a>
+                
+                  <a href="mrrooterpittsburgh.com" target="_blank" rel="noopener">mrrooterpittsburgh.com</a>
+                
+                  <a href="mrrooterca.com" target="_blank" rel="noopener">mrrooterca.com</a>
+                
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">Mr. Rooter Plumbing services</td>
+            <td>
+              <span class="status-cited">CITED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">Mr. Rooter Plumbing is a company that provides extensive residential and commercial plumbing and drain cleaning services across the United States and Canada. Founded in Oklahoma City in 1970, it operates through a network of independently owned and operated franchises and is part of the Neighborly® family of home service brands.
+
+**Services Offered:**
+Mr. Rooter Plumbing offers a wide array of plumbing solutions, including:
+*   General plumbing repairs and installations (e.g., faucets, sinks, toilets, pipes)
+*   Emergency plumbing services
+*   Drain cleaning and sewer line services, including trenchless sewer line repair and video inspection
+*   Water heater repair, replacement, and installation
+*   Septic system services
+*   Well pump services
+*   Water filter and softener installation
+*   Garbage disposal services
+*   Gas line services
+*   Remodeling services
+*   Sump pump installation
+*   HydroScrub® and preventative maintenance inspections
+
+**Customer Experience and Company Practices:**
+Mr. Rooter Plumbing emphasizes customer service with features like upfront, flat-rate pricing so customers know the cost before work begins. They also offer flexible appointments and back their work with the &#34;Neighborly Done Right Promise®,&#34; which means they will make it right if a job isn&#39;t done correctly. Some locations may offer a free in-home inspection with a repair or other plumbing service.
+
+While some customer reviews praise the professionalism and efficiency of the staff and good service, others report negative experiences regarding pricing, finding costs excessive, or issues with customer service responsiveness and transparency. Some reviews also mention instances of property damage or difficulties with down payments and contract clarity. Ratings can vary by individual franchise; for example, Mr. Rooter Plumbing of St. Louis holds a 4.5 out of 5 overall rating on Angi.</div>
+                <div class="snippet-full">Mr. Rooter Plumbing is a company that provides extensive residential and commercial plumbing and drain cleaning services across the United States and Canada. Founded in Oklahoma City in 1970, it operates through a network of independently owned and operated franchises and is part of the Neighborly® family of home service brands.
+
+**Services Offered:**
+Mr. Rooter Plumbing offers a wide array of plumbing solutions, including:
+*   General plumbing repairs and installations (e.g., faucets, sinks, toilets, pipes)
+*   Emergency plumbing services
+*   Drain cleaning and sewer line services, including trenchless sewer line repair and video inspection
+*   Water heater repair, replacement, and installation
+*   Septic system services
+*   Well pump services
+*   Water filter and softener installation
+*   Garbage disposal services
+*   Gas line services
+*   Remodeling services
+*   Sump pump installation
+*   HydroScrub® and preventative maintenance inspections
+
+**Customer Experience and Company Practices:**
+Mr. Rooter Plumbing emphasizes customer service with features like upfront, flat-rate pricing so customers know the cost before work begins. They also offer flexible appointments and back their work with the &#34;Neighborly Done Right Promise®,&#34; which means they will make it right if a job isn&#39;t done correctly. Some locations may offer a free in-home inspection with a repair or other plumbing service.
+
+While some customer reviews praise the professionalism and efficiency of the staff and good service, others report negative experiences regarding pricing, finding costs excessive, or issues with customer service responsiveness and transparency. Some reviews also mention instances of property damage or difficulties with down payments and contract clarity. Ratings can vary by individual franchise; for example, Mr. Rooter Plumbing of St. Louis holds a 4.5 out of 5 overall rating on Angi.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  <a href="mrrooter.com" target="_blank" rel="noopener">mrrooter.com</a>
+                
+                  <a href="mrrooter.com" target="_blank" rel="noopener">mrrooter.com</a>
+                
+                  <a href="neighborly.com" target="_blank" rel="noopener">neighborly.com</a>
+                
+              
+            </td>
+          </tr>
+          
+        </tbody>
+      </table>
+    </div>
+
+    
+    <div class="comp-chart">
+      <h3>Competitor Mentions in AI Responses</h3>
+      
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">angi.com</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 100%"></div>
+        </div>
+        <span class="comp-count">3</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">goffheating.com</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 33%"></div>
+        </div>
+        <span class="comp-count">1</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">molbergplumbing.com</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 33%"></div>
+        </div>
+        <span class="comp-count">1</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">plumbersinsandiego.com</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 33%"></div>
+        </div>
+        <span class="comp-count">1</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">dallasplumbing.com</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 33%"></div>
+        </div>
+        <span class="comp-count">1</span>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  <!-- 5. THREE CHECK SECTIONS -->
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Direct Answer Lead</h2>
+      <span class="check-score-display ' style='color:#e53e3e">
+        24.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        AI assistants like ChatGPT and Perplexity extract the first paragraph of a page to form their answer.
+        If your opening copy does not immediately state who you are, what you do, and include one concrete fact,
+        AI will either skip your page or paraphrase it inaccurately &mdash; costing you citations.
+      
+    </p>
+    <div class="evidence-block">Your browser does not support the HTML5 video tag. Mr. Rooter Plumbing: Expert Plumbing Contractors You Can Trust Quality Work by Local Plumbing Professionals Are you looking for a plumbing contractor you can trust for residential and commercial plumbing services? You’re in the right place. We are your locally owned and operated plumbing company. Whether you’re looking for help with a sewer line repair or a bathroom remodel, we are here to take your call. Customer Reviews 0/5 Rating Residential Commercial Let Us Call You First Name*Enter a valid first name Last Name*Enter a valid last name Email*Enter a valid</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Fact Density &amp; Structure</h2>
+      <span class="check-score-display ' style='color:#d69e2e">
+        63.2<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        Generative AI prefers content with verifiable facts &mdash; numbers, dates, certifications, and statistics.
+        Pages with vague marketing language score poorly in AI-synthesised answers. Structured content
+        (headings, lists, schema markup) also helps AI parse and attribute your content correctly.
+      
+    </p>
+    <div class="evidence-block">The Neighborly Done Right Promise® delivered by Mr Rooter Plumbing®, a proud Neighborly company. At Mr. Rooter Plumbing,</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Agent Discoverability</h2>
+      <span class="check-score-display ' style='color:#38a169">
+        100.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        AI crawlers (GPTBot, ClaudeBot, Perplexity) respect robots.txt and look for a llms.txt file
+        (similar to robots.txt but written for language models). Blocking these bots or failing to provide
+        an llms.txt means AI systems cannot learn about your business &mdash; making you invisible in AI answers.
+      
+    </p>
+    <div class="evidence-block">All AI bots: allowed in robots.txt
+llms.txt: present
+sitemap.xml: present</div>
+  </div>
+  
+
+  <!-- 6. FIX ROADMAP -->
+  <div class="card">
+    <h2>Fix Roadmap</h2>
+
+    <!-- 2x2 Matrix -->
+    
+    
+    
+    
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+
+    <div class="matrix-axis-label-row" style="margin-bottom:4px;">
+      <div class="matrix-axis-x">Low Effort</div>
+      <div class="matrix-axis-x">High Effort</div>
+    </div>
+    <div class="matrix-grid">
+      <div class="matrix-cell quick-wins">
+        <h4 style="color:#276749;">&#9889; Quick Wins</h4>
+        <p style="font-size:0.78rem; color:#276749; margin-bottom:8px;">High Impact &middot; Low Effort</p>
+        
+          <ul><li>Start your opening statement with what your business does</li></ul>
+        
+      </div>
+      <div class="matrix-cell strategic">
+        <h4 style="color:#2c5282;">&#127775; Strategic</h4>
+        <p style="font-size:0.78rem; color:#2c5282; margin-bottom:8px;">High Impact &middot; High Effort</p>
+        
+          <p style="font-size:0.82rem; color:#718096; font-style:italic;">None</p>
+        
+      </div>
+      <div class="matrix-cell easy-wins">
+        <h4 style="color:#744210;">&#128161; Easy Wins</h4>
+        <p style="font-size:0.78rem; color:#744210; margin-bottom:8px;">Low Impact &middot; Low Effort</p>
+        
+          <ul><li>Improve &#39;Neighborly Done Right Promise&#39; description</li><li>Your Website is Ready for AI Agents</li></ul>
+        
+      </div>
+      <div class="matrix-cell deprioritize">
+        <h4 style="color:#4a5568;">&#128337; Deprioritize</h4>
+        <p style="font-size:0.78rem; color:#4a5568; margin-bottom:8px;">Low Impact &middot; High Effort</p>
+        
+          <p style="font-size:0.82rem; color:#718096; font-style:italic;">None</p>
+        
+      </div>
+    </div>
+
+    <!-- Fix cards -->
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Start your opening statement with what your business does</span>
+        <span class="badge badge-impact-high">Impact: high</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">A &#39;direct answer lead&#39; means the first sentence or two of your business description should immediately state what your business does. This helps search engines and potential customers quickly understand your core services. By starting with a clear statement, you improve your chances of appearing in direct answer boxes and capture user attention faster.</p>
+      <div class="copy-paste-block">Mr. Rooter Plumbing provides trusted residential and commercial plumbing services. Our local plumbing professionals are dedicated to delivering quality work for all your plumbing needs, from routine maintenance to emergency repairs.</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Improve &#39;Neighborly Done Right Promise&#39; description</span>
+        <span class="badge badge-impact-medium">Impact: medium</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">This fix clarifies the description of the &#39;Neighborly Done Right Promise&#39; on your website. Clearly explaining your unique promises helps customers understand your commitment and builds trust, which search engines also value (&#39;fact density&#39;). Ignoring this can lead to missed opportunities for customers to grasp what makes your business special and may limit your visibility in search results.</p>
+      <div class="copy-paste-block">The Neighborly Done Right Promise® is our commitment to your satisfaction, ensuring every service is completed with [VERIFY: 100%] quality and professionalism. If it’s not done right, we promise to make it right. This promise is delivered by Mr. Rooter Plumbing®, a proud Neighborly company, demonstrating our dedication to [VERIFY: customer peace of mind].</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Your Website is Ready for AI Agents</span>
+        <span class="badge badge-impact-low">Impact: low</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">This means AI agents (like search engine crawlers and large language models) can effectively find and process information from your site. Optimal discoverability is crucial for your business to appear in search results and AI-driven recommendations, helping new customers find your services. Your current setup is excellent, so you don&#39;t need to make any changes.</p>
+      <div class="copy-paste-block">Your current website configuration allows all AI bots and search engines to easily discover and understand your content. No changes are needed at this time.</div>
+    </div>
+    
+  </div>
+
+  <!-- 7. APPENDIX -->
+  <div class="card">
+    <h2>Appendix &mdash; Raw Details</h2>
+    
+    <details>
+      <summary>Direct Answer Lead &mdash; raw details</summary>
+      <div class="json-block">{
+  "confidence": 0.6,
+  "first_100_words": "Your browser does not support the HTML5 video tag. Mr. Rooter Plumbing: Expert Plumbing Contractors You Can Trust Quality Work by Local Plumbing Professionals Are you looking for a plumbing contractor you can trust for residential and commercial plumbing services? You\u2019re in the right place. We are your locally owned and operated plumbing company. Whether you\u2019re looking for help with a sewer line repair or a bathroom remodel, we are here to take your call. Customer Reviews 0/5 Rating Residential Commercial Let Us Call You First Name*Enter a valid first name Last Name*Enter a valid last name Email*Enter a valid",
+  "is_self_contained": false,
+  "weakness": "The first sentence states what the business is but does not explicitly state what it does, delaying that key information."
+}</div>
+    </details>
+    
+    <details>
+      <summary>Fact Density &amp; Structure &mdash; raw details</summary>
+      <div class="json-block">{
+  "fact_count": 2,
+  "fact_density": 0.33,
+  "rewrite": "The Neighborly Done Right Promise\u00ae is our commitment to your satisfaction, ensuring every service is completed with [VERIFY: 100%] quality and professionalism. If it\u2019s not done right, we promise to make it right. This promise is delivered by Mr. Rooter Plumbing\u00ae, a proud Neighborly company, demonstrating our dedication to [VERIFY: customer peace of mind].",
+  "schema_types": 1,
+  "structure": {
+    "h2_count": 18,
+    "h3_count": 11,
+    "list_count": 76,
+    "outbound_links": 43,
+    "table_count": 0
+  }
+}</div>
+    </details>
+    
+    <details>
+      <summary>Agent Discoverability &mdash; raw details</summary>
+      <div class="json-block">{
+  "blocked_bots": [],
+  "generated_llms_txt": "# Mr. Rooter Plumbing\n\n\u003e Mr. Rooter Plumbing is a Plumbing company based in unknown, offering Plumbing services and repairs.\n\n## About\n\n- [Mr. Rooter Plumbing Homepage](https://mrrooter.com): Main website with full service details\n- [Mr. Rooter Plumbing Services](https://mrrooter.com/services): Complete list of services offered\n\n## Contact\n\n- [Mr. Rooter Plumbing Contact](https://mrrooter.com/contact): Get in touch or request a quote\n",
+  "llms_txt_issues": [],
+  "llms_txt_status": "present",
+  "sitemap_present": true
+}</div>
+    </details>
+    
+
+    
+      
+    
+      
+    
+      
+      <details>
+        <summary>Generated llms.txt &mdash; Agent Discoverability</summary>
+        <div class="json-block"># Mr. Rooter Plumbing
+
+&gt; Mr. Rooter Plumbing is a Plumbing company based in unknown, offering Plumbing services and repairs.
+
+## About
+
+- [Mr. Rooter Plumbing Homepage](https://mrrooter.com): Main website with full service details
+- [Mr. Rooter Plumbing Services](https://mrrooter.com/services): Complete list of services offered
+
+## Contact
+
+- [Mr. Rooter Plumbing Contact](https://mrrooter.com/contact): Get in touch or request a quote
+</div>
+      </details>
+      
+    
+  </div>
+
+  <!-- 8. FOOTER -->
+  <div class="footer">
+    <p>Generated by <strong>GEO Auditor</strong> &mdash; Generative Engine Optimisation analysis tool</p>
+    <p style="margin-top:4px;">Audited: https://www.mrrooter.com &nbsp;|&nbsp; Overall score: 48.5/100 (Poor)</p>
+  </div>
+
+</div><!-- /container -->
+</body>
+</html>
