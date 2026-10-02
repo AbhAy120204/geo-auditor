@@ -1,6 +1,12 @@
 import json
 from geo_auditor.models import FetchResult, LLMConfig, CheckResult
 from geo_auditor.llm import chat_complete
+from geo_auditor.thresholds import (
+    DIRECT_ANSWER_LEAD_WORDS,
+    DIRECT_ANSWER_PASS_BASE,
+    DIRECT_ANSWER_PASS_SPAN,
+    DIRECT_ANSWER_FAIL_SPAN,
+)
 
 SYSTEM = """You are a GEO (Generative Engine Optimization) analyst.
 Evaluate whether the FIRST 100 WORDS of this webpage content are self-contained and directly answer
@@ -22,7 +28,7 @@ def check_direct_answer(fetch_result: FetchResult, config: LLMConfig) -> CheckRe
         )
 
     words = fetch_result.text.split()
-    first_100 = " ".join(words[:100])
+    first_100 = " ".join(words[:DIRECT_ANSWER_LEAD_WORDS])
 
     try:
         raw = chat_complete(config, [
@@ -37,9 +43,9 @@ def check_direct_answer(fetch_result: FetchResult, config: LLMConfig) -> CheckRe
         is_self_contained, confidence, weakness = False, 0.0, "LLM evaluation failed"
 
     if is_self_contained:
-        score = round(50 + confidence * 50, 1)
+        score = round(DIRECT_ANSWER_PASS_BASE + confidence * DIRECT_ANSWER_PASS_SPAN, 1)
     else:
-        score = round(confidence * 40, 1)
+        score = round(confidence * DIRECT_ANSWER_FAIL_SPAN, 1)
 
     fix_hint = weakness if weakness else "Opening paragraph is vague marketing copy — no specific facts or direct answer."
 

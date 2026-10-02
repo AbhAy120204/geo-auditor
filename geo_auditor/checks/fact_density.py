@@ -1,8 +1,21 @@
 import json
 import re
 from bs4 import BeautifulSoup
+from geo_auditor.jsonld import distinct_types
 from geo_auditor.models import FetchResult, LLMConfig, CheckResult
 from geo_auditor.llm import chat_complete
+from geo_auditor.thresholds import (
+    FACT_DENSITY_TARGET_PCT,
+    FACT_STRUCTURE_TARGET,
+    FACT_SCHEMA_TARGET,
+    FACT_LINKS_TARGET,
+    FACT_WEIGHT_DENSITY,
+    FACT_WEIGHT_STRUCTURE,
+    FACT_WEIGHT_SCHEMA,
+    FACT_WEIGHT_LINKS,
+    FACT_TEXT_WORD_LIMIT,
+    FACT_WEAK_PARA_CHARS,
+)
 
 FACT_PATTERN = re.compile(
     r'\b\d{1,3}(?:,\d{3})*(?:\.\d+)?%?\b'
@@ -27,17 +40,8 @@ def compute_fact_density(text: str):
 
 
 def _count_schema_types(html: str) -> int:
-    soup = BeautifulSoup(html, "lxml")
-    types = set()
-    for tag in soup.find_all("script", type="application/ld+json"):
-        try:
-            data = json.loads(tag.string or "")
-            t = data.get("@type")
-            if t:
-                types.add(t if isinstance(t, str) else str(t))
-        except Exception:
-            pass
-    return len(types)
+    """Count distinct JSON-LD @types on the page."""
+    return len(distinct_types(html))
 
 
 def _count_structure(html: str) -> dict:
@@ -62,17 +66,22 @@ def check_fact_density(fetch_result: FetchResult, config: LLMConfig) -> CheckRes
             fix_hint="Page content could not be extracted.", details={},
         )
 
-    text_600 = " ".join(fetch_result.text.split()[:600])
+    text_600 = " ".join(fetch_result.text.split()[:FACT_TEXT_WORD_LIMIT])
     density, fact_count = compute_fact_density(text_600)
     structure = _count_structure(fetch_result.html)
     schema_count = _count_schema_types(fetch_result.html)
 
-    density_score = min(density / 1.0, 1.0)
-    structure_score = min((structure["h2_count"] + structure["h3_count"] + structure["list_count"]) / 5, 1.0)
-    schema_score = min(schema_count / 2, 1.0)
-    links_score = min(structure["outbound_links"] / 3, 1.0)
+    density_score = min(density / FACT_DENSITY_TARGET_PCT, 1.0)
+    structure_score = min((structure["h2_count"] + structure["h3_count"] + structure["list_count"]) / FACT_STRUCTURE_TARGET, 1.0)
+    schema_score = min(schema_count / FACT_SCHEMA_TARGET, 1.0)
+    links_score = min(structure["outbound_links"] / FACT_LINKS_TARGET, 1.0)
 
-    raw = density_score * 0.4 + structure_score * 0.3 + schema_score * 0.2 + links_score * 0.1
+    raw = (
+        density_score * FACT_WEIGHT_DENSITY
+        + structure_score * FACT_WEIGHT_STRUCTURE
+        + schema_score * FACT_WEIGHT_SCHEMA
+        + links_score * FACT_WEIGHT_LINKS
+    )
     score = round(raw * 100, 1)
 
     weak_para, rewrite = "", ""
@@ -85,12 +94,12 @@ def check_fact_density(fetch_result: FetchResult, config: LLMConfig) -> CheckRes
         weak_para = data.get("weak_paragraph", "")
         rewrite = data.get("rewrite", "")
     except Exception:
-        weak_para = text_600[:200]
+        weak_para = text_600[:FACT_WEAK_PARA_CHARS]
         rewrite = ""
 
     return CheckResult(
         name="Fact Density & Structure", score=score, max_score=100.0,
-        evidence=weak_para or text_600[:200],
+        evidence=weak_para or text_600[:FACT_WEAK_PARA_CHARS],
         fix_hint=f"Weak paragraph: {weak_para}\nSuggested rewrite: {rewrite}",
         details={
             "fact_density": density, "fact_count": fact_count,
