@@ -278,18 +278,27 @@
     </div>
   </div>
 
-  <!-- 2. MOCK BANNER -->
-  {% if audit.is_mocked %}
+  <!-- 2. NOT-MEASURED BANNER -->
+  {% set unmeasured = audit.checks | rejectattr("measured") | list %}
+  {% if unmeasured %}
   <div class="mock-banner">
     <span class="icon">&#9888;</span>
-    <span>Demo mode &mdash; AI visibility probe was not run (no API key). Visibility score is mocked at 0. All on-page checks are real.</span>
+    <span>
+      {{ unmeasured | length }} check(s) could not be measured on this run
+      ({{ unmeasured | map(attribute="name") | join(", ") }}).
+      These are <strong>excluded</strong> from the score and the remaining weights
+      rescaled &mdash; an unavailable signal is not counted against the site.
+    </span>
   </div>
   {% endif %}
 
   <!-- 3. SCORE BREAKDOWN -->
   <div class="card">
     <h2>Score Breakdown</h2>
-    <p class="formula">Formula: AI Visibility (50%) + Direct Answer Lead (20%) + Fact Density &amp; Structure (15%) + Agent Discoverability (15%)</p>
+    <p class="formula">Formula: AI Visibility (50%) + Direct Answer Lead (11%) + Agent Discoverability (9%) + Content Freshness (5%) + Markdown-safe Structure (5%) + Fact Density &amp; Structure (4%) + Citation Density (4%) + Organization E-E-A-T (4%) + Content Depth (4%) + Wikipedia Presence (2%) + Community Citations (2%)</p>
+    {% if unmeasured %}
+    <p class="formula" style="color:#b7791f;">Weights renormalised over the {{ audit.checks|length - unmeasured|length }} check(s) that returned a measurement.</p>
+    {% endif %}
 
     {% set vis_score = audit.visibility.score %}
     {% set vis_bar_pct = vis_score %}
@@ -307,16 +316,27 @@
     <div class="breakdown-row">
       <span class="breakdown-label">
         {{ check.name }}
-        {% if check.name == "Direct Answer Lead" %}(20%)
-        {% elif check.name == "Fact Density & Structure" %}(15%)
-        {% elif check.name == "Agent Discoverability" %}(15%)
-        {% else %}(15%){% endif %}
+        {% if check.name == "Direct Answer Lead" %}(11%)
+        {% elif check.name == "Fact Density & Structure" %}(4%)
+        {% elif check.name == "Agent Discoverability" %}(9%)
+        {% elif check.name == "Content Freshness" %}(5%)
+        {% elif check.name == "Markdown-safe Structure" %}(5%)
+        {% elif check.name == "Citation Density" %}(4%)
+        {% elif check.name == "Organization E-E-A-T" %}(4%)
+        {% elif check.name == "Content Depth" %}(4%)
+        {% elif check.name == "Wikipedia Presence" %}(2%)
+        {% elif check.name == "Community Citations" %}(2%)
+        {% else %}(?){% endif %}
       </span>
       <div class="breakdown-bar-wrap">
+        {% if check.measured %}
         <div class="breakdown-bar {% if pct < 50 %}bar-red{% elif pct < 75 %}bar-yellow{% else %}bar-green{% endif %}"
              style="width: {{ pct }}%"></div>
+        {% endif %}
       </div>
-      <span class="breakdown-val">{{ pct }}</span>
+      <span class="breakdown-val">
+        {%- if check.measured %}{{ pct }}{% else %}<span style="color:#a0aec0; font-style:italic; font-size:0.8rem;">n/a</span>{% endif -%}
+      </span>
     </div>
     {% endfor %}
   </div>
@@ -325,7 +345,7 @@
   <div class="card">
     <h2>AI Visibility Probe
       <span style="float:right; font-size:0.85rem; font-weight:400; color:#718096;">
-        Score: {{ audit.visibility.score }}/100{% if audit.visibility.is_mocked %} &nbsp;<span style="color:#d69e2e;">[MOCKED]</span>{% endif %}
+        Score: {{ audit.visibility.score }}/100
       </span>
     </h2>
 
@@ -365,11 +385,23 @@
             </td>
             <td class="sources-cell">
               {% if q.sources %}
-                {% for src in q.sources[:3] %}
-                  <a href="{{ src }}" target="_blank" rel="noopener">{{ src[:50] }}{% if src|length > 50 %}...{% endif %}</a>
+                {% for i in range([q.sources|length, 3]|min) %}
+                  {% if q.source_uris and i < q.source_uris|length %}
+                    <a href="{{ q.source_uris[i] }}" target="_blank" rel="noopener">{{ q.sources[i] }}</a>
+                  {% else %}
+                    <span>{{ q.sources[i] }}</span>
+                  {% endif %}
                 {% endfor %}
               {% else %}
-                (none)
+                <span style="color:#a0aec0; font-style:italic;">(none)</span>
+              {% endif %}
+              {% if q.gemini_searches %}
+                <div style="margin-top:6px; font-size:0.75rem; color:#718096;">
+                  <span style="font-weight:600;">Gemini searched:</span>
+                  {% for gs in q.gemini_searches %}
+                    <div style="font-style:italic; color:#a0aec0;">&#x1F50D; {{ gs }}</div>
+                  {% endfor %}
+                </div>
               {% endif %}
             </td>
           </tr>
@@ -417,10 +449,49 @@
         AI crawlers (GPTBot, ClaudeBot, Perplexity) respect robots.txt and look for a llms.txt file
         (similar to robots.txt but written for language models). Blocking these bots or failing to provide
         an llms.txt means AI systems cannot learn about your business &mdash; making you invisible in AI answers.
+      {% elif check.name == "Content Freshness" %}
+        Perplexity applies a strict ~30-day recency window when ranking sources. Content older than 90 days
+        drops sharply in AI citation frequency. Ensure your key landing pages have a verifiable publish or
+        update date in structured data &mdash; AI cannot trust what it cannot date.
+      {% elif check.name == "Markdown-safe Structure" %}
+        AI engines convert your HTML to plain text before processing, and extract question/answer blocks in
+        preference to prose. Two formats survive that reduction: an H2/H3 phrased as a question with a short
+        answer directly below it, or an explicit FAQPage JSON-LD block &mdash; either one counts here.
+        Generic marketing headings (&ldquo;Our Services&rdquo;) are stripped out.
+      {% elif check.name == "Citation Density" %}
+        Pages that cite their sources &mdash; via attributed blockquotes, &lt;cite&gt; tags, or phrases like
+        &ldquo;according to&rdquo; &mdash; signal authoritative content. AI systems trained on academic and
+        journalistic text recognise these patterns and prefer to cite sources that themselves cite sources.
+        Only quotes that name their source count: an unattributed customer testimonial is inbound praise,
+        not an outbound citation.
+      {% elif check.name == "Organization E-E-A-T" %}
+        Google&rsquo;s Search Generative Experience and Bing Copilot use Organisation schema (JSON-LD) to
+        verify business identity before featuring a brand in an AI answer. For a business with premises,
+        a complete NAP (Name + Address + Phone) is the trust signal. For one without &mdash; software,
+        publisher, agency &mdash; verifiable identity does the same job: sameAs profiles, legalName,
+        founding date and logo let an engine resolve exactly which real-world entity the page describes.
+      {% elif check.name == "Content Depth" %}
+        Thin pages (&lt;300 words) are routinely filtered by AI engines before synthesis. At least 600 words
+        of substantive content is needed for Perplexity and ChatGPT Browse to consider a page citable.
+        This word count refers to visible body text only &mdash; navigation and footer boilerplate is excluded.
+      {% elif check.name == "Wikipedia Presence" %}
+        Wikipedia is the most-cited source across all major AI engines. A Wikipedia article about your brand
+        is the strongest possible authority signal. For most businesses this isn&rsquo;t achievable, but mentions
+        within existing Wikipedia articles (city, industry, or niche pages) and a Wikidata entity are.
+      {% elif check.name == "Community Citations" %}
+        Perplexity and ChatGPT heavily surface Reddit and Hacker News threads in their answers, because that
+        content is authentic, conversational, and recent. This counts how many community sources the AI engine
+        actually pulled from while answering questions about your category &mdash; read from the live citation
+        list in the probe above, not from a third-party scrape.
       {% else %}
         This check evaluates a key GEO factor that affects how AI assistants discover and cite your business.
       {% endif %}
     </p>
+    {% if not check.measured %}
+    <p style="font-size:0.8rem; color:#b7791f; margin:0 0 8px;">
+      <strong>Not measured on this run</strong> &mdash; excluded from the score rather than counted as a low result.
+    </p>
+    {% endif %}
     <div class="evidence-block">{{ check.evidence }}</div>
   </div>
   {% endfor %}
