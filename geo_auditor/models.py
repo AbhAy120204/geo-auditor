@@ -18,6 +18,7 @@ class FetchResult:
     url: str
     status_code: int
     error: str | None = None
+    headers: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -32,10 +33,12 @@ class BusinessProfile:
 @dataclass
 class QueryResult:
     query: str
-    status: str        # "cited" | "mentioned" | "absent" | "error"
+    status: str                      # "cited" | "mentioned" | "absent" | "error"
     snippet: str
-    sources: list[str]
-    weight: float      # 2.0 for unbranded, 1.0 for branded
+    sources: list[str]               # bare domain strings from web.title — used for citation detection
+    weight: float                    # 2.0 for unbranded, 1.0 for branded
+    source_uris: list[str] = field(default_factory=list)     # Vertex AI redirect URIs — display/clicking only
+    gemini_searches: list[str] = field(default_factory=list) # web_search_queries Gemini issued internally
 
 
 @dataclass
@@ -43,7 +46,6 @@ class VisibilityResult:
     score: float       # 0-100
     queries: list[QueryResult]
     competitor_mentions: dict[str, int] = field(default_factory=dict)
-    is_mocked: bool = False
 
 
 @dataclass
@@ -54,6 +56,10 @@ class CheckResult:
     evidence: str      # verbatim text from the page
     fix_hint: str      # raw hint for fixer.py
     details: dict      # check-specific raw values
+    # False when the check could not measure its signal (API down, required
+    # data absent). Excluded from the weighted score by scorer.score_audit
+    # rather than scored low.
+    measured: bool = True
 
 
 @dataclass
@@ -74,4 +80,3 @@ class ScoredAudit:
     overall_score: float
     band: str
     fixes: list[Fix]
-    is_mocked: bool
