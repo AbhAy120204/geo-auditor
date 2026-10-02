@@ -4,3 +4,14 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+
+# Generated report output — not source
+*.html
+reports/
+
+# Run logs
+*.log
+
+# Research working files
+research_*.md
+research_prompt.md

@@ -29,72 +29,224 @@ cp .env.example .env
 
 ## What it checks
 
-| Check | Weight | What we measure | Research basis |
-|-------|--------|-----------------|----------------|
-| **AI Visibility Probe** | 50% | 8 buyer-intent queries sent to Gemini with `google_search` grounding — Gemini searches Google live, retrieves real pages, synthesizes an answer, and returns grounded citations. Detects if your domain is cited. Tracks competitor share-of-voice. | Live web-grounded AICF; directly mirrors how ChatGPT/Perplexity/Gemini answer; unbranded queries weighted 2× |
-| **Direct Answer Lead** | 20% | Does your opening paragraph directly answer the visitor's query without context? LLM-scored for self-containment. | Princeton KDD '24: 44.2% of all LLM citations from first 30% of page; context starvation |
-| **Fact Density & Structure** | 15% | Numbers/stats/dates per 100 words + H2/H3/lists/tables + schema.org types + outbound authority links | Princeton KDD '24: statistics injection = largest single visibility lift; +115.1% for previously low-ranked sites |
-| **Agent Discoverability** | 15% | Are GPTBot/ClaudeBot/PerplexityBot/OAI-SearchBot blocked in robots.txt? Is a valid llms.txt file present? Is sitemap.xml accessible? | RAG pipeline requires bot access; llms.txt bypasses noisy HTML parsing |
+### Scoring weights at a glance
 
-**Score formula:** `Overall = Visibility×0.50 + DirectAnswer×0.20 + FactDensity×0.15 + Discoverability×0.15`
+| Check | Weight | Method | Calibration |
+|-------|--------|---------|-------------|
+| **AI Visibility Probe** | **50%** | Live Gemini `google_search` grounding | [GROUNDED] |
+| **Direct Answer Lead** | **11%** | LLM judgment | [GROUNDED] |
+| **Agent Discoverability** | **9%** | HTTP + file parsing | [GROUNDED] |
+| **Content Freshness** | **5%** | Structured data + headers | [GROUNDED / HEURISTIC] |
+| **Markdown-safe Structure** | **5%** | HTML heading analysis | [HEURISTIC] |
+| **Fact Density & Structure** | **4%** | Regex + HTML + JSON-LD | [GROUNDED] |
+| **Citation Density** | **4%** | HTML tag + phrase parsing | [HEURISTIC] |
+| **Organization E-E-A-T** | **4%** | JSON-LD schema parsing | [HEURISTIC] |
+| **Content Depth** | **4%** | Word count (trafilatura) | [HEURISTIC] |
+| **Wikipedia Presence** | **2%** | Wikipedia Search API | [GROUNDED] |
+| **Community Citations** | **2%** | Forum domains in probe grounding sources | [HEURISTIC] |
 
-Every point is traceable — no black-box numbers.
+**Score formula:** `Overall = Visibility×0.50 + Σ(check × weight)`  
+All weights and thresholds live in `geo_auditor/thresholds.py` — no magic numbers scattered in check files.
 
-## What I chose to cut and why
+---
 
-| Cut | Reason |
-|-----|--------|
-| **Perplexity API probe** | No API key available. Would add a second live engine for true cross-engine share-of-voice. Listed in "next week." |
-| **Multi-page crawl** | Homepage covers ~80% of signal. A full 5-page crawl adds meaningful cost for a first version — the checks tell you *what* to fix, and fixing the homepage is always the highest-leverage first move. |
-| **Content freshness check** | Requires crawling many pages and comparing last-modified timestamps. High effort, medium signal, first version. |
-| **Bing index check** | Bing Webmaster Tools API requires verified site ownership — can't check for an arbitrary third-party URL. Noted limitation. |
-| **Quotation Addition check** | Research (Princeton KDD '24, pillar 4) shows attributable third-party quotes boost citation probability. Checking for this requires NLP entity/attribution detection — high implementation effort for a first version. Partial signal already captured inside Fact Density (outbound links score). |
-| **Cross-Platform Citation Network** | Research (pillar 9) shows 86% of AI citations come from brand-managed external sources (Wikipedia, Reddit, Google Business Profile). Checking these requires scraping multiple third-party platforms with no reliable API — high effort, not feasible in time budget. |
-| **Auth / billing / database / CI / Docker** | Not needed — the tool is a stateless CLI that generates a local HTML file. No persistence, no users, no server required. |
+### Check details and research basis
 
-## What's real vs mocked
+#### AI Visibility Probe — 50%
 
-**Everything is real when API keys are present.**
+8 buyer-intent queries sent to Gemini with `google_search` grounding (5 unbranded × weight 2.0 + 3 branded × weight 1.0). Gemini searches Google live, retrieves real pages, synthesizes an answer, and returns grounded citations. Detects if your domain is cited, mentioned, or absent. Tracks competitor share-of-voice.
+
+**Why 50%:** Direct measurement of AI search presence — the entire purpose of the audit. Unbranded queries are weighted 2× because they represent customers who don't already know your name.  
+**Proof:** [Perplexity citation analysis](https://aithinkerlab.com/generative-engine-optimization-2026/) shows AI Overviews weight live-crawled grounded results, not training-data recall. Gemini `google_search` grounding is the only public API that mirrors this pipeline.
+
+---
+
+#### Direct Answer Lead — 11%
+
+Does your opening paragraph directly answer the visitor's query without any surrounding context? LLM-scored for self-containment (pass → 50 + confidence×50; fail → confidence×40).
+
+**Why 11%:** First-paragraph bias is the single most documented GEO finding.  
+**Proof:** [Princeton KDD '24 (Aggarwal et al.)](https://arxiv.org/abs/2311.09735) — 44.2% of all LLM citations originate from the first 30% of a page. A self-contained opening paragraph is the cheapest intervention with the highest citation lift.
+
+---
+
+#### Agent Discoverability — 9%
+
+Are GPTBot / ClaudeBot / PerplexityBot / OAI-SearchBot blocked in `robots.txt`? Is a valid `llms.txt` present? Is `sitemap.xml` reachable?
+
+**Why 9%:** A blocked bot cannot index your page — zero score on the probe is guaranteed regardless of content quality.  
+**Proof:** [OpenAI GPTBot documentation](https://platform.openai.com/docs/gptbot) — crawl permission is a hard prerequisite. [llmstxt.org specification](https://llmstxt.org/) — `llms.txt` bypasses noisy HTML-to-text conversion, giving AI engines a clean structured context file.
+
+---
+
+#### Content Freshness — 5%
+
+Detects last-published or last-updated date via structured data (`datePublished` / `dateModified` in JSON-LD, visible date labels) and `Last-Modified` HTTP header (with CDN false-positive guard: header < 1 day old and no structured date → discarded).
+
+**Why 5%:** Recency is a gated signal — stale content is deprioritized at the retrieval step before any quality scoring happens.  
+**Proof:** [Perplexity source freshness documentation](https://www.perplexity.ai/hub/blog/perplexity-pages) — Perplexity applies an approximate 30-day recency preference window. Pages updated within 30 days score 1.0×; older content decays on a curve down to 0.10× beyond 365 days. The 30-day cutoff is [GROUNDED]; the decay curve is [HEURISTIC].
+
+---
+
+#### Markdown-safe Structure — 5%
+
+Counts headings that are phrased as questions (`?` at end) with a substantive direct-answer paragraph (15–250 words) immediately following. AI engines convert HTML to plain text before synthesis — question/answer heading patterns produce naturally citable snippets.
+
+**Why 5%:** AI engines extract structured Q&A blocks as discrete citation candidates.  
+**Proof:** [AutoGEO (Wu et al., CMU — ICLR 2026)](https://arxiv.org/abs/2510.11438) confirmed structured, self-contained Q&A patterns consistently outperform marketing prose in citation rate across all major generative engines tested.
+
+---
+
+#### Fact Density & Structure — 4%
+
+Numbers/stats/dates per 100 words (40% weight) + H2/H3/lists/tables count (30%) + distinct JSON-LD `@type`s (20%) + outbound authority links (10%).
+
+**Why 4%:** Statistics injection is the single largest measurable lift in the original GEO paper — but it co-moves with overall content quality (correlated with Direct Answer Lead and Content Depth), so it carries a lower independent weight to avoid double-counting.  
+**Proof:** [Princeton KDD '24 (Aggarwal et al.)](https://arxiv.org/abs/2311.09735) — statistics injection yielded +115.1% visibility lift for previously low-ranked sites, the highest of any single intervention tested.
+
+---
+
+#### Citation Density — 4%
+
+Counts `<blockquote>` tags, `<cite>` tags, and attribution phrases in body text ("according to", "research by", "data from", "reported by", "cited in", "sources:"). Intentionally **excludes outbound links** (already counted in Fact Density).
+
+**Why 4%:** Pages that cite sources signal authoritative, trustworthy content — a pattern AI engines trained on academic and journalistic text have learned to prefer.  
+**Proof:** [AutoGEO (Wu et al., CMU — ICLR 2026)](https://arxiv.org/abs/2510.11438) — well-sourced content (explicit attributions, not just links) was among the top discriminators for citation by generative engines. Threshold values are [HEURISTIC] — not empirically calibrated against citation-winning pages.
+
+---
+
+#### Organization E-E-A-T — 4%
+
+Finds `LocalBusiness` / `Organization` JSON-LD (20+ schema.org subtypes, handles `@graph` format). Scores NAP completeness: name only → 40; + phone or address → 65; full NAP → 85; full NAP + `sameAs` social profiles → 100.
+
+**Why 4%:** Google's Search Generative Experience and Bing Copilot use Organization schema to verify business identity before featuring a brand in an AI answer. Missing NAP = unverifiable entity.  
+**Proof:** [Google Search Central — schema.org LocalBusiness](https://developers.google.com/search/docs/appearance/structured-data/local-business) — structured NAP is a documented trust signal for local knowledge panels, which feed SGE answers. `sameAs` social proof is a [HEURISTIC] extension of this.
+
+---
+
+#### Content Depth — 4%
+
+Word count of trafilatura-extracted body text (navigation, footer, and boilerplate stripped). Tiers calibrated for company/service pages, not blog posts: <150 → 15; 150–299 → 40; 300–599 → 65; 600–999 → 85; 1000+ → 100.
+
+**Why 4%:** Thin pages are filtered at the retrieval step by AI engines before quality scoring. 300 words is the practical minimum for a page to be considered substantive.  
+**Proof:** [AutoGEO (Wu et al., CMU — ICLR 2026)](https://arxiv.org/abs/2510.11438) — comprehensive content (sufficient depth to cover the topic) was consistently rewarded across all engines tested. Tier breakpoints are [HEURISTIC].
+
+---
+
+#### Wikipedia Presence — 2%
+
+One HTTP GET to the Wikipedia Search API (no auth). Matches results against business name using substring + multi-word overlap (requires ≥ 2 significant words, len > 3, excluding stopwords like "inc", "llc"). Binary: article found → 100; not found → 20.
+
+**Why 2%:** Wikipedia is the single most-cited source across all major AI engines. A Wikipedia article is the strongest brand-authority signal available. Low weight because it's binary and most small businesses will score 20 — it shouldn't dominate.  
+**Proof:** [Perplexity citation analysis](https://aithinkerlab.com/generative-engine-optimization-2026/) — Wikipedia pages are consistently top-3 cited domains in AI-synthesized answers. Score values are [GROUNDED] for the direction; threshold is [HEURISTIC].
+
+---
+
+#### Community Citations — 2%
+
+No extra HTTP call. Counts forum/discussion domains (Reddit, Hacker News, Stack Overflow, …) in the grounding sources the probe already collected — i.e. how often the AI engine actually drew on community discussion when answering about this category. Count-based tiers in `thresholds.py`. Self-excludes (not scored) when too few probe queries triggered a live search to report a rate from.
+
+**Why 2%:** Perplexity and ChatGPT Browse surface Reddit and HN heavily — authentic user discussion is treated as corroborating evidence.  
+**Proof:** [Nine Pillars of GEO Visibility](https://aithinkerlab.com/generative-engine-optimization-2026/) — community corroboration (Reddit, forums) is listed as a distinct GEO ranking factor. Tier breakpoints are [HEURISTIC].
+
+> Replaces an earlier Reddit Footprint check that called Reddit's search JSON API directly; that endpoint returns HTTP 403 to unauthenticated clients, so it could never measure anything.
+
+---
+
+## What's real vs unmeasured
+
+**Everything is real when an API key is present.**
 
 - **AI Visibility Probe** — real Gemini calls with `google_search` grounding. Gemini searches Google live for each buyer query and returns grounded citations. This is genuine live-web-grounded AI visibility measurement — not training data, not a scrape.
-- **On-page checks** (robots.txt, llms.txt, sitemap, regex fact density, HTML structure parsing) — always real, no LLM required.
-- **LLM analysis** (profiling, direct-answer scoring, fix generation) — real Gemini calls (gemini-2.5-flash).
-- If `GEMINI_API_KEY` is missing → visibility probe shows clearly-labelled demo mode (yellow banner on report, `[MOCKED]` in CLI output); analysis checks exit with a clear error.
+- **On-page checks** (robots.txt, llms.txt, sitemap, regex fact density, HTML structure parsing, Wikipedia API) — always real, no LLM required.
+- **LLM analysis** (profiling, direct-answer scoring, fix generation) — real Gemini calls.
+- `GEMINI_API_KEY` is required; without it the tool exits with a clear error (there is no mock/demo mode).
+- A check that cannot measure its signal (API unreachable, required data absent) is marked **not measured** and excluded from the score — the remaining weights renormalise — rather than reported as a low result.
 
-## What I'd build next (with another week)
+## Architecture
 
-1. **Perplexity API integration** — second live engine, true cross-engine share-of-voice table
+```
+audit.py                         ← CLI entry point (click)
+geo_auditor/
+  config.py                      ← Model tiers (probe / analysis / fast)
+  thresholds.py                  ← Every scoring cutoff and weight (single source of truth)
+  models.py                      ← Dataclasses for all domain types
+  jsonld.py                      ← Shared JSON-LD parser (fact_density, org_eeat, freshness)
+  profiler.py                    ← Extracts business name/category/city from URL via LLM
+  probe.py                       ← Live AI search probe (Gemini + google_search grounding)
+  llm.py                         ← Gemini API calls (chat + grounded web search)
+  scorer.py                      ← Weighted score aggregation (reads weights from thresholds.py)
+  fixer.py                       ← LLM-generated copy-paste fix recommendations
+  reporter.py                    ← Jinja2 → self-contained HTML report
+  fetcher.py                     ← httpx + trafilatura page fetch and text extraction
+  checks/
+    direct_answer.py             ← LLM-scored opening paragraph self-containment
+    fact_density.py              ← Regex + HTML parsing for stats/structure/schema
+    discoverability.py           ← robots.txt, llms.txt, sitemap checks
+    freshness.py                 ← Structured data + Last-Modified date detection
+    markdown_structure.py        ← Question-heading + answer-paragraph pattern detection
+    citation_density.py          ← Blockquote/cite tags + attribution phrases
+    org_eeat.py                  ← LocalBusiness / Organization JSON-LD NAP completeness
+    content_depth.py             ← Word count of trafilatura-extracted body text
+    wikipedia.py                 ← Wikipedia Search API presence check
+    community_citations.py       ← Forum citations from probe grounding sources
+templates/
+  report.html.j2                 ← Self-contained HTML report (no external CDN)
+```
+
+## Threshold calibration
+
+All scoring thresholds live in `geo_auditor/thresholds.py`. Each value is tagged:
+
+| Tag | Meaning |
+|-----|---------|
+| `[GROUNDED]` | Backed by a cited academic study or documented engine behavior |
+| `[HEURISTIC]` | Reasoned estimate — plausible but not measured against real citation data |
+| `[STRUCTURAL]` | Mechanical detection bound — low calibration value (e.g. regex character limits) |
+
+The intended calibration path for `[HEURISTIC]` values: run the audit against a corpus of pages that actually win AI citations, observe where the current thresholds over/under-penalize, and update `thresholds.py`. **Do not replace thresholds with per-audit LLM calls** — that trades an inspectable guess for an undocumented one and adds run-to-run nondeterminism.
+
+## Design decisions & tradeoffs
+
+| Decision | Rationale |
+|----------|-----------|
+| **Gemini `google_search` grounding as probe** | The only public API that mirrors how AI Overviews / Perplexity work — live web retrieval, not training-data recall. |
+| **All thresholds in `thresholds.py`** | Centralizes every magic number with a calibration tag. Makes it obvious what's measured vs. guessed. |
+| **Fact vs. judgment routing** | Deterministic facts (dates, tag counts, entity existence) → code/free-API + thresholds. Judgments (is this lead self-contained?) → LLM. Mixing them adds nondeterminism without improving accuracy. |
+| **Three model tiers** | `gemini-3.8-flash` for probe/analysis (grounded search + quality judgment); `gemini-2.5-flash-lite` for low-effort structured JSON tasks (query generation, status classification). Cost-optimized without degrading quality-sensitive paths. |
+| **URL-only competitor extraction** | Gemini links real product recommendations as `[Brand](url)` but never links section headers. URL-based discrimination eliminates all stoplists. Also filters on link text to prevent the audited business from appearing in its own competitor list. |
+| **String match before LLM detection** | Cheaper and catches full-text mentions that would be truncated in an LLM prompt. LLM only fires for ambiguous absent cases. |
+| **Homepage-only crawl** | Covers ~80% of GEO signal. Multi-page crawl is a roadmap item. |
+| **Stateless CLI → local HTML** | No auth, no database, no server. The output is a single file you can email or share. |
+
+## Known limitations
+
+- **Correlated checks:** Direct Answer Lead, Fact Density, Content Depth, and Markdown Structure all co-move with overall content quality. Summing them as independent weights double-counts the content quality signal. Treat the overall score as directional — don't trust differences smaller than ~5 points.
+- **Fact Density saturation:** its component targets are low enough that most content pages max three of four components, so the check barely discriminates good from excellent until the thresholds are calibrated against a cited-page corpus.
+- **Community Citations denominator:** depends on how many probe queries Gemini chose to web-search, which varies per run; the check self-excludes below a minimum rather than report an unstable rate.
+- **freshness CDN guard:** The Last-Modified header guard (discard if < 1 day old with no structured date) catches most CDN/SSR false-fresh stamps but not all edge cases.
+- **Wikipedia name matching:** Multi-word overlap matching may miss brands with non-obvious Wikipedia article titles (e.g. a company known by an acronym different from its legal name).
+
+## Roadmap
+
+1. **Weekly monitoring mode** — re-run on schedule, diff scores over time, alert on drops
 2. **Multi-page crawl** — audit top 5 pages by traffic, surface the worst offenders per page
-3. **Content freshness check** — detect last-modified dates, "last updated" text, flag stale content on time-sensitive queries
-4. **Weekly monitoring mode** — re-run on schedule, diff scores over time, alert on drops
-5. **Competitor gap analysis** — run the same 8 queries against a named competitor URL, show where they're winning your slots
+3. **Competitor gap analysis** — run the same queries against a named competitor URL, show where they're winning your slots
+4. **Threshold calibration tooling** — script to run audits against a known-cited page corpus and propose updated `[HEURISTIC]` values
+5. **Bing index presence** — requires Bing Webmaster Tools API (site ownership verification barrier)
 
 ## Research foundation
 
-Every check in this tool is grounded in peer-reviewed research. These are the papers that drove the design decisions:
+**[GEO: Generative Engine Optimization](https://arxiv.org/abs/2311.09735)**  
+Aggarwal et al., Princeton University / Georgia Tech / Allen Institute for AI — ACM SIGKDD 2024.  
+Key findings: 44.2% of all LLM citations originate from the first 30% of a page; statistics injection yields the single largest visibility lift (+115.1% for previously low-ranked sites).
 
-**[GEO: Generative Engine Optimization](https://arxiv.org/abs/2311.09735)**
-Aggarwal et al., Princeton University / Georgia Tech / Allen Institute for AI — ACM SIGKDD 2024.
-The foundational paper. Introduced GEO-Bench (10,000 queries across 9 domains) and empirically proved which content interventions boost AI citation frequency. Key findings used in this tool:
-- 44.2% of all LLM citations originate from the first 30% of a page → drove the Direct Answer Lead check
-- Statistics injection yields the single largest visibility lift → drove the Fact Density check
-- Adding inline source citations yields +115.1% lift for previously low-ranked sites
-- GEO democratises search: lower-DA sites benefit *more* from structural fixes than high-authority domains
+**[AutoGEO: What Generative Search Engines Like and How to Optimize Web Content Cooperatively](https://arxiv.org/abs/2510.11438)**  
+Wu et al., Carnegie Mellon University — ICLR 2026.  
+Confirmed that different generative engines reward structured, comprehensive, well-sourced, self-contained content.
 
-**[What Generative Search Engines Like and How to Optimize Web Content Cooperatively](https://arxiv.org/abs/2510.11438)**
-Wu et al., Carnegie Mellon University — ICLR 2026.
-AutoGEO framework. Proved that different generative engines (Gemini, GPT-4, Claude) have distinct content preferences based on training. Confirmed the core GEO finding: engines consistently reward structured, comprehensive, well-sourced, self-contained content.
+**[The Nine Pillars of GEO Visibility](https://aithinkerlab.com/generative-engine-optimization-2026/)**  
+Industry synthesis of millions of AI citations. Ranking factor framework that maps to this tool's scoring dimensions.
 
-**[The Nine Pillars of GEO Visibility](https://aithinkerlab.com/generative-engine-optimization-2026/)**
-Industry synthesis of millions of AI citations. Established the ranking factor framework — fact density, direct-answer lead, structured extractability, agent discoverability — that forms the audit's scoring dimensions. Also established that 87% of ChatGPT-cited pages appear in Bing's top results (the Bing Index Presence pillar, skipped in v1 due to API ownership requirement).
-
-**[llms.txt specification](https://llmstxt.org/)**
-The emerging standard for machine-readable site context, analogous to robots.txt but written for LLMs. Directly implemented in the Agent Discoverability check — the tool validates compliance and generates a ready-to-upload llms.txt for every audited site.
-
-## Sample reports
-
-Run against three real businesses:
-
-- `reports/audit_1.html` — **Tacombi** (NYC Mexican restaurant chain) — GEO score: 28/100 (Critical) — invisible in AI search despite being a well-known NYC brand; Yelp and TripAdvisor take every unbranded slot
-- `reports/audit_2.html` — **Mr. Rooter Plumbing** (national franchise) — GEO score: 49/100 (Poor) — known brand, full discoverability, but AI cites listing aggregators (Angi, HomeAdvisor) over their own domain for unbranded queries
-- `reports/audit_3.html` — **Notion** (SaaS productivity tool) — GEO score: 60/100 (Fair) — strong brand awareness in AI answers but loses unbranded slots to Asana, Monday.com, and Slack
+**[llms.txt specification](https://llmstxt.org/)**  
+Emerging standard for machine-readable site context for LLMs — directly implemented in the Agent Discoverability check.
