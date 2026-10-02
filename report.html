@@ -1,0 +1,2570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEO Audit &mdash; LiteLLM</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f9fa;
+    color: #1a1a2e;
+    line-height: 1.6;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+  /* -- Hero -- */
+  .hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 40px 48px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+  }
+  .hero-left { flex: 1; }
+  .hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
+  .hero .domain { color: #a0aec0; font-size: 0.9rem; margin-bottom: 12px; }
+  .hero .verdict { color: #e2e8f0; font-size: 1rem; margin-top: 12px; }
+  .hero-score { text-align: center; min-width: 140px; }
+  .score-num { font-size: 3rem; font-weight: 800; line-height: 1; }
+  .score-label { font-size: 0.85rem; color: #a0aec0; margin-top: 4px; }
+
+  /* Band badges */
+  .band-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 8px;
+  }
+  .band-Critical  { background: #fed7d7; color: #9b2335; }
+  .band-Poor      { background: #feebc8; color: #7b341e; }
+  .band-Fair      { background: #fefcbf; color: #744210; }
+  .band-Good      { background: #c6f6d5; color: #22543d; }
+  .band-Excellent { background: #bee3f8; color: #2a4365; }
+
+  /* -- Mock banner -- */
+  .mock-banner {
+    background: #fefcbf;
+    border: 2px solid #d69e2e;
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #744210;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .mock-banner .icon { font-size: 1.2rem; }
+
+  /* -- Section cards -- */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+
+  /* -- Score Breakdown -- */
+  .formula { font-size: 0.82rem; color: #718096; margin-bottom: 20px; }
+  .breakdown-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .breakdown-label { min-width: 200px; font-size: 0.9rem; color: #4a5568; }
+  .breakdown-bar-wrap { flex: 1; background: #e2e8f0; border-radius: 6px; height: 14px; overflow: hidden; }
+  .breakdown-bar { height: 100%; border-radius: 6px; transition: width 0.4s; }
+  .bar-red    { background: #fc8181; }
+  .bar-yellow { background: #f6e05e; }
+  .bar-green  { background: #68d391; }
+  .breakdown-val { min-width: 50px; text-align: right; font-size: 0.85rem; font-weight: 600; color: #2d3748; }
+
+  /* -- Probe table -- */
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th {
+    background: #f7fafc;
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #718096;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .status-cited     { background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-mentioned { background: #feebc8; color: #7b341e; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-absent    { background: #fed7d7; color: #9b2335; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .status-error     { background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; }
+  .snippet-cell { max-width: 340px; font-size: 0.82rem; color: #4a5568; line-height: 1.5; }
+  .snippet-preview { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .snippet-full { display: none; white-space: pre-wrap; }
+  .snippet-toggle { display: inline-block; margin-top: 4px; font-size: 0.75rem; color: #3182ce; cursor: pointer; user-select: none; }
+  .snippet-toggle:hover { text-decoration: underline; }
+  .sources-cell { font-size: 0.78rem; color: #718096; }
+  .sources-cell a { color: #3182ce; text-decoration: none; display: block; }
+  .sources-cell a:hover { text-decoration: underline; }
+
+  /* Competitor chart */
+  .comp-chart { margin-top: 20px; }
+  .comp-chart h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: #4a5568; }
+  .comp-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .comp-name { min-width: 160px; font-size: 0.85rem; color: #2d3748; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .comp-bar-wrap { flex: 1; background: #e2e8f0; border-radius: 4px; height: 12px; }
+  .comp-bar { height: 100%; background: #76e4f7; border-radius: 4px; }
+  .comp-count { font-size: 0.82rem; color: #718096; min-width: 30px; text-align: right; }
+
+  /* -- Check sections -- */
+  .check-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .check-score-display { font-size: 1.3rem; font-weight: 700; }
+  .check-score-max { font-size: 0.85rem; color: #a0aec0; }
+  .why-matters { font-size: 0.9rem; color: #4a5568; margin-bottom: 14px; line-height: 1.6; }
+  .evidence-block {
+    border-left: 4px solid #f6ad55;
+    background: #fffbf0;
+    padding: 12px 16px;
+    font-style: italic;
+    font-size: 0.875rem;
+    color: #4a5568;
+    border-radius: 0 6px 6px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* -- Fix Roadmap -- */
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .matrix-cell {
+    border-radius: 8px;
+    padding: 16px;
+    border: 2px solid transparent;
+  }
+  .matrix-cell.quick-wins { background: #f0fff4; border-color: #68d391; }
+  .matrix-cell.strategic  { background: #ebf8ff; border-color: #76e4f7; }
+  .matrix-cell.easy-wins  { background: #fffff0; border-color: #f6e05e; }
+  .matrix-cell.deprioritize { background: #f7fafc; border-color: #e2e8f0; }
+  .matrix-cell h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .matrix-cell ul { padding-left: 16px; font-size: 0.85rem; color: #4a5568; }
+  .matrix-axis-x { text-align: center; font-size: 0.78rem; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .matrix-axis-label-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .fix-card {
+    background: #f7fafc;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    border-left: 4px solid #3182ce;
+  }
+  .fix-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .fix-card-title { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+  .badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .badge-impact-high   { background: #c6f6d5; color: #22543d; }
+  .badge-impact-medium { background: #feebc8; color: #7b341e; }
+  .badge-impact-low    { background: #e2e8f0; color: #4a5568; }
+  .badge-effort-low    { background: #bee3f8; color: #2a4365; }
+  .badge-effort-medium { background: #fefcbf; color: #744210; }
+  .badge-effort-high   { background: #fed7d7; color: #9b2335; }
+  .fix-explanation { font-size: 0.88rem; color: #4a5568; margin-bottom: 14px; line-height: 1.6; }
+  .copy-paste-block {
+    background: #1a1a2e;
+    color: #e2e8f0;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 0.82rem;
+    padding: 16px 18px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+  }
+
+  /* -- Appendix -- */
+  details { margin-bottom: 10px; }
+  summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #3182ce;
+    padding: 6px 0;
+    user-select: none;
+  }
+  summary:hover { text-decoration: underline; }
+  .json-block {
+    background: #1a1a2e;
+    color: #a0d5b5;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.78rem;
+    padding: 14px 16px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-top: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* -- Footer -- */
+  .footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #a0aec0;
+    margin-top: 40px;
+    padding-bottom: 40px;
+  }
+  .footer a { color: #3182ce; text-decoration: none; }
+
+  /* -- Print -- */
+  @media print {
+    .card { box-shadow: none; }
+    .hero { box-shadow: none; }
+    .copy-paste-block { white-space: pre-wrap; overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 1. HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <h1>LiteLLM</h1>
+      <div class="domain">https://www.litellm.ai/</div>
+      <span class="band-badge band-Fair">Fair</span>
+      <p class="verdict">
+        
+          Some GEO foundations in place, but key gaps are holding back AI visibility.
+        
+      </p>
+    </div>
+    <div class="hero-score">
+      <div class="score-num">59.7</div>
+      <div class="score-label">/ 100</div>
+      <div class="score-label" style="margin-top:6px;">GEO Score</div>
+    </div>
+  </div>
+
+  <!-- 2. NOT-MEASURED BANNER -->
+  
+  
+  <div class="mock-banner">
+    <span class="icon">&#9888;</span>
+    <span>
+      2 check(s) could not be measured on this run
+      (Content Freshness, Community Citations).
+      These are <strong>excluded</strong> from the score and the remaining weights
+      rescaled &mdash; an unavailable signal is not counted against the site.
+    </span>
+  </div>
+  
+
+  <!-- 3. SCORE BREAKDOWN -->
+  <div class="card">
+    <h2>Score Breakdown</h2>
+    <p class="formula">Formula: AI Visibility (50%) + Direct Answer Lead (11%) + Agent Discoverability (9%) + Content Freshness (5%) + Markdown-safe Structure (5%) + Fact Density &amp; Structure (4%) + Citation Density (4%) + Organization E-E-A-T (4%) + Content Depth (4%) + Wikipedia Presence (2%) + Community Citations (2%)</p>
+    
+    <p class="formula" style="color:#b7791f;">Weights renormalised over the 8 check(s) that returned a measurement.</p>
+    
+
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">AI Visibility (50%)</span>
+      <div class="breakdown-bar-wrap">
+        <div class="breakdown-bar bar-yellow"
+             style="width: 53.8%"></div>
+      </div>
+      <span class="breakdown-val">53.8</span>
+    </div>
+
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Direct Answer Lead
+        (11%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+        <div class="breakdown-bar bar-red"
+             style="width: 34.0%"></div>
+        
+      </div>
+      <span class="breakdown-val">34.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Fact Density &amp; Structure
+        (4%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+        <div class="breakdown-bar bar-green"
+             style="width: 100.0%"></div>
+        
+      </div>
+      <span class="breakdown-val">100.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Agent Discoverability
+        (9%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+        <div class="breakdown-bar bar-yellow"
+             style="width: 65.0%"></div>
+        
+      </div>
+      <span class="breakdown-val">65.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Content Freshness
+        (5%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+      </div>
+      <span class="breakdown-val"><span style="color:#a0aec0; font-style:italic; font-size:0.8rem;">n/a</span></span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Markdown-safe Structure
+        (5%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+        <div class="breakdown-bar bar-green"
+             style="width: 100.0%"></div>
+        
+      </div>
+      <span class="breakdown-val">100.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Citation Density
+        (4%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+        <div class="breakdown-bar bar-red"
+             style="width: 15.0%"></div>
+        
+      </div>
+      <span class="breakdown-val">15.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Organization E-E-A-T
+        (4%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+        <div class="breakdown-bar bar-green"
+             style="width: 100.0%"></div>
+        
+      </div>
+      <span class="breakdown-val">100.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Content Depth
+        (4%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+        <div class="breakdown-bar bar-green"
+             style="width: 85.0%"></div>
+        
+      </div>
+      <span class="breakdown-val">85.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Wikipedia Presence
+        (2%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+        <div class="breakdown-bar bar-green"
+             style="width: 100.0%"></div>
+        
+      </div>
+      <span class="breakdown-val">100.0</span>
+    </div>
+    
+    
+    <div class="breakdown-row">
+      <span class="breakdown-label">
+        Community Citations
+        (2%)
+        
+      </span>
+      <div class="breakdown-bar-wrap">
+        
+      </div>
+      <span class="breakdown-val"><span style="color:#a0aec0; font-style:italic; font-size:0.8rem;">n/a</span></span>
+    </div>
+    
+  </div>
+
+  <!-- 4. AI VISIBILITY PROBE -->
+  <div class="card">
+    <h2>AI Visibility Probe
+      <span style="float:right; font-size:0.85rem; font-weight:400; color:#718096;">
+        Score: 53.8/100
+      </span>
+    </h2>
+
+    <p style="font-size:0.875rem; color:#4a5568; margin-bottom:1rem;">
+      We asked an AI assistant the questions your potential customers actually type &mdash; without mentioning your brand.
+      <strong>Cited</strong> means your domain appeared in the AI&rsquo;s answer.
+      <strong>Mentioned</strong> means your brand name appeared in the answer but not as a link.
+      <strong>Absent</strong> means a competitor took your slot.
+      <em style="font-size:0.8rem; color:#718096;">Unbranded queries (where customers don&rsquo;t already know your name) are weighted 2&times; &mdash; they represent real new business.</em>
+    </p>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Query</th>
+            <th>Result</th>
+            <th>What AI Said</th>
+            <th>Sources</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">unified api for multiple large language models</td>
+            <td>
+              <span class="status-mentioned">MENTIONED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">A **unified API for Large Language Models (LLMs)** standardizes requests across different providers (OpenAI, Anthropic, Google Gemini, Mistral, open-source models, etc.) into a single format—usually adopting the OpenAI API specification.
+
+The leading tools and services are categorized below by how you might want to use them:
+
+---
+
+### 1. Developer Favorites (Open-Source &amp; Self-Hosted)
+
+#### **LiteLLM** *(Most Popular)*
+* **What it is:** An open-source Python library and standalone proxy server that translates calls to 100+ LLMs into the standard OpenAI format (`/v1/chat/completions`).
+* **Deployment:** Can be used directly in Python code via `pip install litellm` or deployed as a lightweight proxy container (Docker).
+* **Key Features:**
+  * Consistent interface across OpenAI, Anthropic, Bedrock, Vertex AI, Ollama, Groq, etc.
+  * Load balancing, fallbacks (e.g., if OpenAI 429s, automatically failover to Claude), retries, and budget tracking.
+* **Example Usage (Python):**
+  ```python
+  from litellm import completion
+
+  # Call Claude
+  response1 = completion(
+      model=&#34;anthropic/claude-3-5-sonnet-20241022&#34;,
+      messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}],
+  )
+
+  # Call Gemini
+  response2 = completion(
+      model=&#34;gemini/gemini-1.5-pro&#34;,
+      messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}],
+  )
+  ```
+
+#### **One API / New API**
+* **What it is:** A very popular open-source Go-based management platform that aggregates dozens of LLMs into a single OpenAI-compatible API endpoint.
+* **Key Features:** UI dashboard, user token management, quota allocation, rate limiting, and support for domestic/international models.
+
+---
+
+### 2. Managed Hosted Routers (Plug-and-Play)
+
+If you don&#39;t want to manage API keys for 10 different providers or run your own gateway:
+
+#### **OpenRouter**
+* **What it is:** A hosted aggregator and marketplace with a single unified API key to access almost every major proprietary and open-source model.
+* **Key Features:**
+  * Native OpenAI-compatible endpoint (`https://openrouter.ai/api/v1/chat/completions`).
+  * Pay-as-you-go with a single wallet/credit balance.
+  * Automatic fallbacks to alternative providers hosting the same model if one goes down.
+  * Model switching just by changing the string: `anthropic/claude-3.5-sonnet`, `meta-llama/llama-3.3-70b-instruct`, `openai/gpt-4o`.
+
+#### **Unify (unify.ai)**
+* **What it is:** A dynamic LLM routing platform.
+* **Key Features:** Lets you query models across different endpoints and provides automatic routing based on lowest cost, lowest latency, or throughput requirements.
+
+---
+
+### 3. Production AI Gateways (Observability &amp; Enterprise)
+
+These sit between your application and providers to offer routing, rate-limiting, security, and analytics.
+
+* **Portkey:** A full-stack AI gateway providing unified APIs, prompt management, conditional routing (semantic cache, fallback, retry), and observability across 200+ models.
+* **Cloudflare AI Gateway:** Acts as a reverse proxy for your existing provider API keys, offering caching, analytics, rate limits, and unified fallback mechanics.
+* **Kong AI Gateway / Envoy AI Gateway:** Traditional enterprise API gateway solutions with AI plugins to standardize LLM traffic, sanitize prompts, and manage routing.
+
+---
+
+### 4. Cloud Hyperscalers (Compliance &amp; Existing Cloud Commitments)
+
+If you have data residency, HIPAA, or strict enterprise cloud requirements:
+
+* **Amazon Bedrock:** Access Claude, Llama 3, Mistral, Command R, and Amazon Titan via a unified AWS SDK with centralized IAM security.
+* **Google Cloud Vertex AI Model Garden:** Access Gemini, Claude, Llama, and specialized models via unified Google Cloud endpoints.
+
+---
+
+### Quick Recommendation:
+
+* **Fastest prototyping without managing multiple accounts:** Use **OpenRouter**.
+* **Best if you want to use your own API keys in Python/Docker:** Use **LiteLLM**.
+* **Best for enterprise production (caching, latency routing, observability):** Use **Portkey** or **Cloudflare AI Gateway**.
+* **Best for corporate cloud security:** Use **AWS Bedrock** or **Vertex AI**.</div>
+                <div class="snippet-full">A **unified API for Large Language Models (LLMs)** standardizes requests across different providers (OpenAI, Anthropic, Google Gemini, Mistral, open-source models, etc.) into a single format—usually adopting the OpenAI API specification.
+
+The leading tools and services are categorized below by how you might want to use them:
+
+---
+
+### 1. Developer Favorites (Open-Source &amp; Self-Hosted)
+
+#### **LiteLLM** *(Most Popular)*
+* **What it is:** An open-source Python library and standalone proxy server that translates calls to 100+ LLMs into the standard OpenAI format (`/v1/chat/completions`).
+* **Deployment:** Can be used directly in Python code via `pip install litellm` or deployed as a lightweight proxy container (Docker).
+* **Key Features:**
+  * Consistent interface across OpenAI, Anthropic, Bedrock, Vertex AI, Ollama, Groq, etc.
+  * Load balancing, fallbacks (e.g., if OpenAI 429s, automatically failover to Claude), retries, and budget tracking.
+* **Example Usage (Python):**
+  ```python
+  from litellm import completion
+
+  # Call Claude
+  response1 = completion(
+      model=&#34;anthropic/claude-3-5-sonnet-20241022&#34;,
+      messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}],
+  )
+
+  # Call Gemini
+  response2 = completion(
+      model=&#34;gemini/gemini-1.5-pro&#34;,
+      messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}],
+  )
+  ```
+
+#### **One API / New API**
+* **What it is:** A very popular open-source Go-based management platform that aggregates dozens of LLMs into a single OpenAI-compatible API endpoint.
+* **Key Features:** UI dashboard, user token management, quota allocation, rate limiting, and support for domestic/international models.
+
+---
+
+### 2. Managed Hosted Routers (Plug-and-Play)
+
+If you don&#39;t want to manage API keys for 10 different providers or run your own gateway:
+
+#### **OpenRouter**
+* **What it is:** A hosted aggregator and marketplace with a single unified API key to access almost every major proprietary and open-source model.
+* **Key Features:**
+  * Native OpenAI-compatible endpoint (`https://openrouter.ai/api/v1/chat/completions`).
+  * Pay-as-you-go with a single wallet/credit balance.
+  * Automatic fallbacks to alternative providers hosting the same model if one goes down.
+  * Model switching just by changing the string: `anthropic/claude-3.5-sonnet`, `meta-llama/llama-3.3-70b-instruct`, `openai/gpt-4o`.
+
+#### **Unify (unify.ai)**
+* **What it is:** A dynamic LLM routing platform.
+* **Key Features:** Lets you query models across different endpoints and provides automatic routing based on lowest cost, lowest latency, or throughput requirements.
+
+---
+
+### 3. Production AI Gateways (Observability &amp; Enterprise)
+
+These sit between your application and providers to offer routing, rate-limiting, security, and analytics.
+
+* **Portkey:** A full-stack AI gateway providing unified APIs, prompt management, conditional routing (semantic cache, fallback, retry), and observability across 200+ models.
+* **Cloudflare AI Gateway:** Acts as a reverse proxy for your existing provider API keys, offering caching, analytics, rate limits, and unified fallback mechanics.
+* **Kong AI Gateway / Envoy AI Gateway:** Traditional enterprise API gateway solutions with AI plugins to standardize LLM traffic, sanitize prompts, and manage routing.
+
+---
+
+### 4. Cloud Hyperscalers (Compliance &amp; Existing Cloud Commitments)
+
+If you have data residency, HIPAA, or strict enterprise cloud requirements:
+
+* **Amazon Bedrock:** Access Claude, Llama 3, Mistral, Command R, and Amazon Titan via a unified AWS SDK with centralized IAM security.
+* **Google Cloud Vertex AI Model Garden:** Access Gemini, Claude, Llama, and specialized models via unified Google Cloud endpoints.
+
+---
+
+### Quick Recommendation:
+
+* **Fastest prototyping without managing multiple accounts:** Use **OpenRouter**.
+* **Best if you want to use your own API keys in Python/Docker:** Use **LiteLLM**.
+* **Best for enterprise production (caching, latency routing, observability):** Use **Portkey** or **Cloudflare AI Gateway**.
+* **Best for corporate cloud security:** Use **AWS Bedrock** or **Vertex AI**.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                <span style="color:#a0aec0; font-style:italic;">(none)</span>
+              
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">software to connect to different LLMs</td>
+            <td>
+              <span class="status-mentioned">MENTIONED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">The right software depends on whether you want a **chat interface for personal use**, a **unified API gateway for developers**, or a **code library**. 
+
+Here is a breakdown of the best tools across these categories:
+
+---
+
+### 1. Chat Interfaces &amp; Desktop Apps (For everyday use)
+If you want a ChatGPT-like interface where you can plug in your own API keys (OpenAI, Anthropic, Gemini, Groq) or run local models (Ollama):
+
+* **[LibreChat](https://www.librechat.ai/)** *(Web/Self-hosted, Open Source)*
+  * **Supported:** OpenAI, Claude, Gemini, Mistral, Ollama, custom endpoints.
+  * **Highlights:** One of the most feature-complete open-source chat clients. Supports multimodal input, presets, search, plugins/agents, and multi-user setups.
+* **[Open WebUI](https://openwebui.com/)** *(Web/Self-hosted, Open Source)*
+  * **Supported:** Ollama (deep integration), OpenAI-compatible APIs, vLLM.
+  * **Highlights:** Originally built for Ollama, it now acts as a full-fledged ChatGPT alternative that allows you to switch seamlessly between local offline models and cloud models.
+* **[Cherry Studio](https://cherry-studio.net/)** *(Desktop: Mac, Windows, Linux, Open Source)*
+  * **Supported:** 30+ providers (OpenAI, Anthropic, DeepSeek, SiliconFlow, Ollama, LM Studio, etc.).
+  * **Highlights:** A sleek, dedicated desktop app that lets you run different models side-by-side in split view to compare their answers.
+* **[Jan.ai](https://jan.ai/)** *(Desktop, Open Source)*
+  * **Supported:** Runs local models offline (via llama.cpp) and connects to cloud APIs (OpenAI, Groq, Mistral, etc.).
+  * **Highlights:** Privacy-focused, local-first alternative to ChatGPT with a clean, native desktop feel.
+* **[TypingMind](https://www.typingmind.com/)** *(Web/Desktop, Paid/Bring-Your-Own-Key)*
+  * **Supported:** OpenAI, Claude, Gemini, Azure, OpenRouter, local models.
+  * **Highlights:** Polished, web-based UI with prompt libraries, custom system prompts, and web browsing capabilities without recurring subscription fees (one-time license).
+
+---
+
+### 2. Unified API Gateways &amp; Routers (For builders &amp; backend)
+If you are building an application and want **one standardized API endpoint** (usually OpenAI format) that automatically routes to different LLMs, handles failovers, and tracks costs:
+
+* **[LiteLLM](https://www.litellm.ai/)** *(Self-hosted/Cloud, Open Source)*
+  * **The gold standard for multi-LLM proxying.**
+  * Call 100+ LLMs (Bedrock, Azure, OpenAI, Vertex AI, Anthropic, Ollama, etc.) using the exact same OpenAI input/output format.
+  * Includes load balancing, fallbacks (if OpenAI is down, route to Claude), rate-limiting, and cost tracking.
+* **[OpenRouter](https://openrouter.ai/)** *(Hosted Service)*
+  * A unified API marketplace. Instead of getting separate API keys for Anthropic, Meta, Mistral, and Google, you buy credits on OpenRouter and access hundreds of models via a single API key.
+* **[One API](https://github.com/songquanpeng/one-api)** / **New API** *(Self-hosted, Open Source)*
+  * A proxy management tool that aggregates multiple LLM API keys and distributes them under a single OpenAI-compatible interface with user quotas and token management.
+* **[Portkey](https://portkey.ai/)** / **[Helicone](https://www.helicone.ai/)**
+  * AI Gateways designed for production apps, providing routing, caching, observability, and fallback across providers.
+
+---
+
+### 3. Developer SDKs &amp; Frameworks (For code)
+If you are writing code in Python or TypeScript to interact with different LLMs interchangeably:
+
+* **[LiteLLM (Python Library)](https://github.com/BerriAI/litellm)**
+  * Translate any LLM call into `completion(model=&#34;claude-3-5-sonnet&#34;, messages=[...])` or `completion(model=&#34;gpt-4o&#34;, ...)`.
+* **[Vercel AI SDK](https://sdk.vercel.ai/)** *(TypeScript/JavaScript)*
+  * The standard for web apps (Next.js, Node.js). Unified API for streaming text, structured outputs, and tool calling across OpenAI, Anthropic, Google, and Mistral.
+* **[LangChain](https://www.langchain.com/) / [LlamaIndex](https://www.llamaindex.ai/)** *(Python/TypeScript)*
+  * Frameworks providing multi-model abstractions, memory, and Retrieval-Augmented Generation (RAG).
+
+---
+
+### Summary Recommendation:
+* **For a ChatGPT alternative with your own keys:** Try **Cherry Studio** (easiest desktop app) or **LibreChat** (most powerful web app).
+* **For routing your apps through one backend:** Use **LiteLLM** or **OpenRouter**.
+* **For coding in Python/JS:** Use the **LiteLLM Python SDK** or **Vercel AI SDK**.</div>
+                <div class="snippet-full">The right software depends on whether you want a **chat interface for personal use**, a **unified API gateway for developers**, or a **code library**. 
+
+Here is a breakdown of the best tools across these categories:
+
+---
+
+### 1. Chat Interfaces &amp; Desktop Apps (For everyday use)
+If you want a ChatGPT-like interface where you can plug in your own API keys (OpenAI, Anthropic, Gemini, Groq) or run local models (Ollama):
+
+* **[LibreChat](https://www.librechat.ai/)** *(Web/Self-hosted, Open Source)*
+  * **Supported:** OpenAI, Claude, Gemini, Mistral, Ollama, custom endpoints.
+  * **Highlights:** One of the most feature-complete open-source chat clients. Supports multimodal input, presets, search, plugins/agents, and multi-user setups.
+* **[Open WebUI](https://openwebui.com/)** *(Web/Self-hosted, Open Source)*
+  * **Supported:** Ollama (deep integration), OpenAI-compatible APIs, vLLM.
+  * **Highlights:** Originally built for Ollama, it now acts as a full-fledged ChatGPT alternative that allows you to switch seamlessly between local offline models and cloud models.
+* **[Cherry Studio](https://cherry-studio.net/)** *(Desktop: Mac, Windows, Linux, Open Source)*
+  * **Supported:** 30+ providers (OpenAI, Anthropic, DeepSeek, SiliconFlow, Ollama, LM Studio, etc.).
+  * **Highlights:** A sleek, dedicated desktop app that lets you run different models side-by-side in split view to compare their answers.
+* **[Jan.ai](https://jan.ai/)** *(Desktop, Open Source)*
+  * **Supported:** Runs local models offline (via llama.cpp) and connects to cloud APIs (OpenAI, Groq, Mistral, etc.).
+  * **Highlights:** Privacy-focused, local-first alternative to ChatGPT with a clean, native desktop feel.
+* **[TypingMind](https://www.typingmind.com/)** *(Web/Desktop, Paid/Bring-Your-Own-Key)*
+  * **Supported:** OpenAI, Claude, Gemini, Azure, OpenRouter, local models.
+  * **Highlights:** Polished, web-based UI with prompt libraries, custom system prompts, and web browsing capabilities without recurring subscription fees (one-time license).
+
+---
+
+### 2. Unified API Gateways &amp; Routers (For builders &amp; backend)
+If you are building an application and want **one standardized API endpoint** (usually OpenAI format) that automatically routes to different LLMs, handles failovers, and tracks costs:
+
+* **[LiteLLM](https://www.litellm.ai/)** *(Self-hosted/Cloud, Open Source)*
+  * **The gold standard for multi-LLM proxying.**
+  * Call 100+ LLMs (Bedrock, Azure, OpenAI, Vertex AI, Anthropic, Ollama, etc.) using the exact same OpenAI input/output format.
+  * Includes load balancing, fallbacks (if OpenAI is down, route to Claude), rate-limiting, and cost tracking.
+* **[OpenRouter](https://openrouter.ai/)** *(Hosted Service)*
+  * A unified API marketplace. Instead of getting separate API keys for Anthropic, Meta, Mistral, and Google, you buy credits on OpenRouter and access hundreds of models via a single API key.
+* **[One API](https://github.com/songquanpeng/one-api)** / **New API** *(Self-hosted, Open Source)*
+  * A proxy management tool that aggregates multiple LLM API keys and distributes them under a single OpenAI-compatible interface with user quotas and token management.
+* **[Portkey](https://portkey.ai/)** / **[Helicone](https://www.helicone.ai/)**
+  * AI Gateways designed for production apps, providing routing, caching, observability, and fallback across providers.
+
+---
+
+### 3. Developer SDKs &amp; Frameworks (For code)
+If you are writing code in Python or TypeScript to interact with different LLMs interchangeably:
+
+* **[LiteLLM (Python Library)](https://github.com/BerriAI/litellm)**
+  * Translate any LLM call into `completion(model=&#34;claude-3-5-sonnet&#34;, messages=[...])` or `completion(model=&#34;gpt-4o&#34;, ...)`.
+* **[Vercel AI SDK](https://sdk.vercel.ai/)** *(TypeScript/JavaScript)*
+  * The standard for web apps (Next.js, Node.js). Unified API for streaming text, structured outputs, and tool calling across OpenAI, Anthropic, Google, and Mistral.
+* **[LangChain](https://www.langchain.com/) / [LlamaIndex](https://www.llamaindex.ai/)** *(Python/TypeScript)*
+  * Frameworks providing multi-model abstractions, memory, and Retrieval-Augmented Generation (RAG).
+
+---
+
+### Summary Recommendation:
+* **For a ChatGPT alternative with your own keys:** Try **Cherry Studio** (easiest desktop app) or **LibreChat** (most powerful web app).
+* **For routing your apps through one backend:** Use **LiteLLM** or **OpenRouter**.
+* **For coding in Python/JS:** Use the **LiteLLM Python SDK** or **Vercel AI SDK**.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                <span style="color:#a0aec0; font-style:italic;">(none)</span>
+              
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">how to switch between AI models easily</td>
+            <td>
+              <span class="status-mentioned">MENTIONED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">How to switch between AI models easily depends on whether you are chatting for everyday tasks, coding, or building software. 
+
+Here are the best ways to do it based on your workflow:
+
+---
+
+### 1. For Everyday Chat &amp; Research (No Technical Setup)
+If you just want a single chat interface where you can pick GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro, or DeepSeek from a dropdown menu:
+
+* **Subscription Aggregators:**
+  * **Poe (by Quora):** One subscription gives you access to almost all major models (Claude, OpenAI, Mistral, Google). You can switch between them mid-conversation.
+  * **Perplexity Pro:** Allows you to change the underlying model (Claude, GPT, Sonar) from the settings or query bar.
+* **Side-by-Side Comparison:**
+  * **ChatHub (Chrome/Edge Extension):** Runs multiple chatbots (ChatGPT, Claude, Gemini, Copilot) in a split-screen layout so you can send one prompt to all of them simultaneously.
+  * **LMSYS Chatbot Arena (`chat.lmsys.org`):** A free web tool where you can choose &#34;Direct Chat&#34; to pick any two models and compare their answers side-by-side.
+
+---
+
+### 2. For Power Users (Pay-As-You-Go with API Keys)
+Instead of paying multiple $20/month subscriptions, you can purchase API credits from OpenAI, Anthropic, and Google, and plug them into a clean chat interface.
+
+* **TypingMind (`typingmind.com`):** A polished web/desktop app where you input your API keys. It lets you switch models with one click, retain chat history, and search past prompts.
+* **LibreChat (`librechat.ai`):** An open-source, self-hosted clone of ChatGPT’s interface. It connects to OpenAI, Anthropic, Google, and local models in one unified dropdown.
+
+---
+
+### 3. For Programmers &amp; Coders
+If you write code and want to switch models depending on the task:
+
+* **AI-First Editors (Cursor or Windsurf):** Both allow you to switch the underlying model (Claude 3.5 Sonnet, GPT-4o, etc.) with a single dropdown in the chat panel or composer.
+* **Continue (`continue.dev`):** An open-source VS Code and JetBrains extension that lets you hook up multiple model providers and toggle between them via shortcut keys.
+* **Aider:** A terminal-based pair programming tool. You can switch models on the fly by typing `/model &lt;model-name&gt;` (e.g., `/model sonnet` or `/model 4o`).
+
+---
+
+### 4. For Developers Building Apps (Code/APIs)
+If you&#39;re writing scripts or building applications and don&#39;t want to rewrite your API call logic for each provider:
+
+* **OpenRouter (`openrouter.ai`):** A single API endpoint that gives you access to hundreds of models (OpenAI, Anthropic, Meta, Mistral). You use a single API key and just change the model string (e.g., `&#34;model&#34;: &#34;anthropic/claude-3.5-sonnet&#34;` vs `&#34;model&#34;: &#34;openai/gpt-4o&#34;`).
+* **LiteLLM (Python library):** Standardizes all major model APIs to follow the OpenAI schema:
+  ```python
+  from litellm import completion
+
+  # Switch simply by changing the model parameter:
+  response = completion(model=&#34;gpt-4o&#34;, messages=[...])
+  response = completion(model=&#34;claude-3-5-sonnet-20240620&#34;, messages=[...])
+  response = completion(model=&#34;gemini/gemini-1.5-pro&#34;, messages=[...])
+  ```
+* **Vercel AI SDK (TypeScript/JS):** Provides a unified provider system (`openai()`, `anthropic()`, `google()`) to easily swap models in web applications.
+
+---
+
+### 5. For Running Models Locally (Offline &amp; Free)
+If you want to run open-weight models (Llama, Mistral, Qwen, DeepSeek) on your computer:
+
+* **LM Studio (`lmstudio.ai`):** A beginner-friendly desktop app where you can download models and swap between them from a top bar selector.
+* **Ollama + Open WebUI:** Run Ollama in the background to manage model downloads, and use Open WebUI to get a ChatGPT-style interface with a model switcher.
+
+---
+
+### Quick Recommendation
+* **Want the simplest setup with no coding?** Try **Poe** or the **ChatHub** browser extension.
+* **Want the cheapest, highest-quality multi-model chat?** Use **TypingMind** with API keys.
+* **Writing code in Python?** Use **LiteLLM**.</div>
+                <div class="snippet-full">How to switch between AI models easily depends on whether you are chatting for everyday tasks, coding, or building software. 
+
+Here are the best ways to do it based on your workflow:
+
+---
+
+### 1. For Everyday Chat &amp; Research (No Technical Setup)
+If you just want a single chat interface where you can pick GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro, or DeepSeek from a dropdown menu:
+
+* **Subscription Aggregators:**
+  * **Poe (by Quora):** One subscription gives you access to almost all major models (Claude, OpenAI, Mistral, Google). You can switch between them mid-conversation.
+  * **Perplexity Pro:** Allows you to change the underlying model (Claude, GPT, Sonar) from the settings or query bar.
+* **Side-by-Side Comparison:**
+  * **ChatHub (Chrome/Edge Extension):** Runs multiple chatbots (ChatGPT, Claude, Gemini, Copilot) in a split-screen layout so you can send one prompt to all of them simultaneously.
+  * **LMSYS Chatbot Arena (`chat.lmsys.org`):** A free web tool where you can choose &#34;Direct Chat&#34; to pick any two models and compare their answers side-by-side.
+
+---
+
+### 2. For Power Users (Pay-As-You-Go with API Keys)
+Instead of paying multiple $20/month subscriptions, you can purchase API credits from OpenAI, Anthropic, and Google, and plug them into a clean chat interface.
+
+* **TypingMind (`typingmind.com`):** A polished web/desktop app where you input your API keys. It lets you switch models with one click, retain chat history, and search past prompts.
+* **LibreChat (`librechat.ai`):** An open-source, self-hosted clone of ChatGPT’s interface. It connects to OpenAI, Anthropic, Google, and local models in one unified dropdown.
+
+---
+
+### 3. For Programmers &amp; Coders
+If you write code and want to switch models depending on the task:
+
+* **AI-First Editors (Cursor or Windsurf):** Both allow you to switch the underlying model (Claude 3.5 Sonnet, GPT-4o, etc.) with a single dropdown in the chat panel or composer.
+* **Continue (`continue.dev`):** An open-source VS Code and JetBrains extension that lets you hook up multiple model providers and toggle between them via shortcut keys.
+* **Aider:** A terminal-based pair programming tool. You can switch models on the fly by typing `/model &lt;model-name&gt;` (e.g., `/model sonnet` or `/model 4o`).
+
+---
+
+### 4. For Developers Building Apps (Code/APIs)
+If you&#39;re writing scripts or building applications and don&#39;t want to rewrite your API call logic for each provider:
+
+* **OpenRouter (`openrouter.ai`):** A single API endpoint that gives you access to hundreds of models (OpenAI, Anthropic, Meta, Mistral). You use a single API key and just change the model string (e.g., `&#34;model&#34;: &#34;anthropic/claude-3.5-sonnet&#34;` vs `&#34;model&#34;: &#34;openai/gpt-4o&#34;`).
+* **LiteLLM (Python library):** Standardizes all major model APIs to follow the OpenAI schema:
+  ```python
+  from litellm import completion
+
+  # Switch simply by changing the model parameter:
+  response = completion(model=&#34;gpt-4o&#34;, messages=[...])
+  response = completion(model=&#34;claude-3-5-sonnet-20240620&#34;, messages=[...])
+  response = completion(model=&#34;gemini/gemini-1.5-pro&#34;, messages=[...])
+  ```
+* **Vercel AI SDK (TypeScript/JS):** Provides a unified provider system (`openai()`, `anthropic()`, `google()`) to easily swap models in web applications.
+
+---
+
+### 5. For Running Models Locally (Offline &amp; Free)
+If you want to run open-weight models (Llama, Mistral, Qwen, DeepSeek) on your computer:
+
+* **LM Studio (`lmstudio.ai`):** A beginner-friendly desktop app where you can download models and swap between them from a top bar selector.
+* **Ollama + Open WebUI:** Run Ollama in the background to manage model downloads, and use Open WebUI to get a ChatGPT-style interface with a model switcher.
+
+---
+
+### Quick Recommendation
+* **Want the simplest setup with no coding?** Try **Poe** or the **ChatHub** browser extension.
+* **Want the cheapest, highest-quality multi-model chat?** Use **TypingMind** with API keys.
+* **Writing code in Python?** Use **LiteLLM**.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                <span style="color:#a0aec0; font-style:italic;">(none)</span>
+              
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">tool for managing multiple generative AI providers</td>
+            <td>
+              <span class="status-mentioned">MENTIONED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">Tools for managing multiple generative AI providers are generally known as **AI Gateways**, **LLM Proxies/Routers**, or **Multi-Model Orchestrators**. 
+
+Depending on whether you want an infrastructure proxy, a single managed billing aggregator, or a developer SDK, the best tools fall into a few clear categories:
+
+---
+
+### 1. Dedicated AI Gateways &amp; Proxies (Best for Production &amp; Infrastructure)
+These tools sit between your application and providers (OpenAI, Anthropic, Bedrock, Vertex AI, Mistral, etc.), standardizing API formats and providing fallbacks, load balancing, rate limiting, and cost tracking.
+
+* **[LiteLLM](https://www.litellm.ai/) (Most Popular Open Source)**
+  * **How it works:** Provides a lightweight proxy server (or Python SDK) that translates 100+ LLM APIs into a unified OpenAI-compatible format.
+  * **Key Features:** Automatic retries, provider fallbacks (e.g., if OpenAI 429s, switch to Anthropic), load balancing, virtual keys, budget tracking per user/team.
+  * **Best For:** Self-hosting your own gateway with minimal overhead.
+
+* **[Portkey](https://portkey.ai/)**
+  * **How it works:** An enterprise-ready AI gateway and control panel with an ultra-fast proxy (written in C++).
+  * **Key Features:** Multi-provider routing, canary releases, automated fallbacks, prompt management, and deep tracing/observability.
+  * **Best For:** Production environments needing enterprise controls, security, and an intuitive UI.
+
+* **[Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/)**
+  * **How it works:** A reverse proxy integrated into Cloudflare’s global edge network.
+  * **Key Features:** Response caching at the edge, rate limiting, real-time analytics, cost tracking, and fallbacks.
+  * **Best For:** Teams already using Cloudflare or looking for a fast, managed edge proxy with a generous free tier.
+
+* **[Kong AI Gateway](https://konghq.com/products/kong-ai-gateway)**
+  * **How it works:** Built on the enterprise Kong API Gateway.
+  * **Key Features:** Multi-LLM routing, prompt engineering injection, governance, credential management, and semantic caching.
+  * **Best For:** Large organizations that already use Kong for traditional API management.
+
+---
+
+### 2. Managed API Aggregators (One Key &amp; One Bill)
+If you don’t want to manage separate billing, accounts, and API keys across 10 different AI companies:
+
+* **[OpenRouter](https://openrouter.ai/)**
+  * **How it works:** A single API endpoint that gives you access to hundreds of proprietary and open-source models (OpenAI, Anthropic, Meta Llama, Google, etc.).
+  * **Key Features:** Pay-as-you-go with a single deposit/billing account, automatic routing to the cheapest or lowest-latency host for open weights, standardized OpenAI format.
+  * **Best For:** Prototyping, startups, or indie developers who want instant access to every model without managing individual vendor contracts.
+
+---
+
+### 3. Developer SDKs &amp; Application Frameworks (Code-Level Abstraction)
+If you want to manage providers directly in code rather than through a proxy server:
+
+* **[Vercel AI SDK](https://sdk.vercel.ai/) (TypeScript / Node / Python)**
+  * **How it works:** A unified library for building AI applications with standardized streaming, tool calling, and structured outputs across providers.
+  * **Best For:** Web and full-stack applications (Next.js, React, Node.js). Switching models often requires changing just one line of code.
+
+* **[LangChain](https://www.langchain.com/) / [LlamaIndex](https://www.llamaindex.ai/)**
+  * **How it works:** Broad application frameworks with modular wrappers for nearly every commercial and local AI provider.
+  * **Best For:** Complex agentic workflows, RAG pipelines, and multi-step reasoning systems.
+
+---
+
+### 4. Observability &amp; Proxy Hybrids
+These tools act as lightweight proxies primarily focused on logging, cost tracking, and evaluation across models:
+
+* **[Helicone](https://www.helicone.ai/)**: A proxy that logs prompts, token usage, and costs across providers, with features like semantic caching and fallback headers.
+* **[Langfuse](https://langfuse.com/)**: Open-source observability and tracing platform that tracks costs and latency across multiple LLM providers.
+
+---
+
+### Summary Recommendation
+
+| If you want... | Recommended Tool |
+| :--- | :--- |
+| **Self-hosted, drop-in proxy for all LLMs** | **LiteLLM** |
+| **Enterprise gateway with a polished UI &amp; governance** | **Portkey** |
+| **Single API key and single bill for everything** | **OpenRouter** |
+| **Managed edge caching and rate limiting** | **Cloudflare AI Gateway** |
+| **Unified code library for TypeScript/Next.js apps** | **Vercel AI SDK** |</div>
+                <div class="snippet-full">Tools for managing multiple generative AI providers are generally known as **AI Gateways**, **LLM Proxies/Routers**, or **Multi-Model Orchestrators**. 
+
+Depending on whether you want an infrastructure proxy, a single managed billing aggregator, or a developer SDK, the best tools fall into a few clear categories:
+
+---
+
+### 1. Dedicated AI Gateways &amp; Proxies (Best for Production &amp; Infrastructure)
+These tools sit between your application and providers (OpenAI, Anthropic, Bedrock, Vertex AI, Mistral, etc.), standardizing API formats and providing fallbacks, load balancing, rate limiting, and cost tracking.
+
+* **[LiteLLM](https://www.litellm.ai/) (Most Popular Open Source)**
+  * **How it works:** Provides a lightweight proxy server (or Python SDK) that translates 100+ LLM APIs into a unified OpenAI-compatible format.
+  * **Key Features:** Automatic retries, provider fallbacks (e.g., if OpenAI 429s, switch to Anthropic), load balancing, virtual keys, budget tracking per user/team.
+  * **Best For:** Self-hosting your own gateway with minimal overhead.
+
+* **[Portkey](https://portkey.ai/)**
+  * **How it works:** An enterprise-ready AI gateway and control panel with an ultra-fast proxy (written in C++).
+  * **Key Features:** Multi-provider routing, canary releases, automated fallbacks, prompt management, and deep tracing/observability.
+  * **Best For:** Production environments needing enterprise controls, security, and an intuitive UI.
+
+* **[Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/)**
+  * **How it works:** A reverse proxy integrated into Cloudflare’s global edge network.
+  * **Key Features:** Response caching at the edge, rate limiting, real-time analytics, cost tracking, and fallbacks.
+  * **Best For:** Teams already using Cloudflare or looking for a fast, managed edge proxy with a generous free tier.
+
+* **[Kong AI Gateway](https://konghq.com/products/kong-ai-gateway)**
+  * **How it works:** Built on the enterprise Kong API Gateway.
+  * **Key Features:** Multi-LLM routing, prompt engineering injection, governance, credential management, and semantic caching.
+  * **Best For:** Large organizations that already use Kong for traditional API management.
+
+---
+
+### 2. Managed API Aggregators (One Key &amp; One Bill)
+If you don’t want to manage separate billing, accounts, and API keys across 10 different AI companies:
+
+* **[OpenRouter](https://openrouter.ai/)**
+  * **How it works:** A single API endpoint that gives you access to hundreds of proprietary and open-source models (OpenAI, Anthropic, Meta Llama, Google, etc.).
+  * **Key Features:** Pay-as-you-go with a single deposit/billing account, automatic routing to the cheapest or lowest-latency host for open weights, standardized OpenAI format.
+  * **Best For:** Prototyping, startups, or indie developers who want instant access to every model without managing individual vendor contracts.
+
+---
+
+### 3. Developer SDKs &amp; Application Frameworks (Code-Level Abstraction)
+If you want to manage providers directly in code rather than through a proxy server:
+
+* **[Vercel AI SDK](https://sdk.vercel.ai/) (TypeScript / Node / Python)**
+  * **How it works:** A unified library for building AI applications with standardized streaming, tool calling, and structured outputs across providers.
+  * **Best For:** Web and full-stack applications (Next.js, React, Node.js). Switching models often requires changing just one line of code.
+
+* **[LangChain](https://www.langchain.com/) / [LlamaIndex](https://www.llamaindex.ai/)**
+  * **How it works:** Broad application frameworks with modular wrappers for nearly every commercial and local AI provider.
+  * **Best For:** Complex agentic workflows, RAG pipelines, and multi-step reasoning systems.
+
+---
+
+### 4. Observability &amp; Proxy Hybrids
+These tools act as lightweight proxies primarily focused on logging, cost tracking, and evaluation across models:
+
+* **[Helicone](https://www.helicone.ai/)**: A proxy that logs prompts, token usage, and costs across providers, with features like semantic caching and fallback headers.
+* **[Langfuse](https://langfuse.com/)**: Open-source observability and tracing platform that tracks costs and latency across multiple LLM providers.
+
+---
+
+### Summary Recommendation
+
+| If you want... | Recommended Tool |
+| :--- | :--- |
+| **Self-hosted, drop-in proxy for all LLMs** | **LiteLLM** |
+| **Enterprise gateway with a polished UI &amp; governance** | **Portkey** |
+| **Single API key and single bill for everything** | **OpenRouter** |
+| **Managed edge caching and rate limiting** | **Cloudflare AI Gateway** |
+| **Unified code library for TypeScript/Next.js apps** | **Vercel AI SDK** |</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                <span style="color:#a0aec0; font-style:italic;">(none)</span>
+              
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">open source llm gateway for developers</td>
+            <td>
+              <span class="status-mentioned">MENTIONED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">An **LLM Gateway** (or AI Proxy) acts as a centralized middleware layer between your applications and LLM providers (OpenAI, Anthropic, Bedrock, Ollama, etc.). It typically offers a unified OpenAI-compatible API, load balancing, fallbacks, caching, cost/token tracking, rate limiting, and guardrails.
+
+Here are the best **open-source LLM gateways** for developers, categorized by their strengths:
+
+---
+
+### 1. [LiteLLM](https://github.com/BerriAI/litellm) (The Community Standard)
+LiteLLM is the most widely adopted open-source LLM proxy. It translates calls to 100+ LLMs into the standard OpenAI API format.
+
+* **Best for:** Most developers and teams looking for an all-in-one, plug-and-play proxy.
+* **Key Features:**
+  * **Unified Interface:** Call Bedrock, Azure, Anthropic, Vertex AI, Ollama, vLLM, and Hugging Face using standard OpenAI SDKs (`openai.chat.completions.create`).
+  * **Resilience:** Automatic retries, load balancing, and fallbacks (e.g., if Claude 3.5 Sonnet times out, failover to GPT-4o).
+  * **Governance:** Virtual API key management, spend tracking per user/team, and strict budget caps.
+  * **Integrations:** Native support for Langfuse, OpenTelemetry, Datadog, and Helicone.
+* **Tech Stack:** Python / Docker.
+
+---
+
+### 2. [Portkey AI Gateway](https://github.com/Portkey-AI/gateway) (Fast &amp; Ultra-Lightweight)
+Portkey open-sourced its production-grade AI gateway designed for ultra-low latency and edge deployment.
+
+* **Best for:** High-throughput systems, edge/serverless runtimes (Cloudflare Workers, Fastly, Node.js).
+* **Key Features:**
+  * **Speed:** Extremely low latency overhead (&lt;1ms) and small footprint (~45KB).
+  * **Multi-Provider Routing:** Supports 200+ models with round-robin, load balancing, and conditional routing.
+  * **Automatic Fallbacks &amp; Retries:** Configurable exponential backoffs and alternate model triggers.
+  * **Edge-Ready:** Runs in Node.js, Bun, Docker, or edge worker environments.
+* **Tech Stack:** TypeScript / Node.js.
+
+---
+
+### 3. [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway) (Enterprise / Cloud-Native)
+An official Envoy-based subproject under CNCF aimed at bringing production-grade traffic management to AI workloads.
+
+* **Best for:** Platform engineering and DevOps teams already running Kubernetes/Envoy in production.
+* **Key Features:**
+  * High-performance proxy with battle-tested networking architecture.
+  * Prompt routing, token-based rate limiting, and centralized observability.
+  * Standardized Envoy filter architecture for extending with custom enterprise policies.
+* **Tech Stack:** Go / Envoy C++.
+
+---
+
+### 4. [Kong AI Gateway](https://github.com/Kong/kong) (API Gateway Native)
+Kong, the industry-standard API gateway, includes native AI capabilities through its open-source AI plugin ecosystem.
+
+* **Best for:** Teams who already use Kong for traditional REST/GraphQL microservices and want to unify their AI traffic under the same infrastructure.
+* **Key Features:**
+  * **AI Proxy Plugin:** Transform payloads across providers on the fly.
+  * **Prompt Engineering Plugins:** Automatic prompt injection, templating, and guardrails at the gateway level.
+  * **Security &amp; Auth:** Leverages Kong’s existing OAuth, mTLS, and RBAC authentication mechanisms.
+* **Tech Stack:** Lua / OpenResty / NGINX.
+
+---
+
+### 5. [RouteLLM](https://github.com/lm-sys/RouteLLM) (Cost-Optimization Router)
+Developed by LMSYS (the team behind Chatbot Arena), RouteLLM specifically focuses on **intelligent model routing** to cut API costs.
+
+* **Best for:** Teams spending heavily on frontier models (like GPT-4o/Claude 3.5 Sonnet) who want to automatically route simpler prompts to cheaper models (like Llama 3 or GPT-4o-mini).
+* **Key Features:**
+  * **Trained Routers:** Uses lightweight embedding or matrix-factorization-based routers to predict whether a cheaper model can satisfy the prompt with human-level quality.
+  * Drops costs by up to 50–70% while maintaining 95%+ of frontier model benchmark performance.
+* **Tech Stack:** Python.
+
+---
+
+### 6. [Arch](https://github.com/katanemo/arch) (Prompt-Aware Intelligent Gateway)
+Arch is an open-source gateway built on Envoy, specifically optimized for **agentic workflows** and prompt security.
+
+* **Best for:** Developers building LLM agents who need prompt-aware routing and fast function-calling handling at the network layer.
+* **Key Features:**
+  * **Prompt Guardrails:** Detects prompt injections and jailbreaks before payloads hit your upstream models.
+  * **Tool/Function Calling Optimization:** Can parse intent and manage tool parameters directly at the gateway layer.
+  * Built on high-performance Envoy infrastructure.
+* **Tech Stack:** Rust / Envoy.
+
+---
+
+### Quick Comparison &amp; Decision Guide
+
+| Requirement | Recommended Tool |
+| :--- | :--- |
+| **&#34;I want an easy proxy that works with the OpenAI SDK in 5 minutes&#34;** | **LiteLLM** |
+| **&#34;I need minimal latency, edge execution, and TypeScript&#34;** | **Portkey Gateway** |
+| **&#34;I want to automatically route easy prompts to cheap models to save costs&#34;** | **RouteLLM** |
+| **&#34;I manage Kubernetes infrastructure for a large engineering org&#34;** | **Envoy AI Gateway** or **Kong** |
+| **&#34;I need fast prompt guardrails and tool calling at the proxy layer&#34;** | **Arch** |
+
+#### Getting Started Example (LiteLLM Proxy):
+```bash
+pip install &#39;litellm[proxy]&#39;
+
+# Start proxy pointing to any provider
+litellm --model ollama/llama3
+# OR
+export ANTHROPIC_API_KEY=&#34;your-key&#34;
+litellm --model anthropic/claude-3-5-sonnet-20240620
+```
+Then simply redirect your client:
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=&#34;anything&#34;,
+    base_url=&#34;http://localhost:4000&#34;,  # Your local proxy
+)
+
+response = client.chat.completions.create(
+    model=&#34;anthropic/claude-3-5-sonnet-20240620&#34;,
+    messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}],
+)
+```</div>
+                <div class="snippet-full">An **LLM Gateway** (or AI Proxy) acts as a centralized middleware layer between your applications and LLM providers (OpenAI, Anthropic, Bedrock, Ollama, etc.). It typically offers a unified OpenAI-compatible API, load balancing, fallbacks, caching, cost/token tracking, rate limiting, and guardrails.
+
+Here are the best **open-source LLM gateways** for developers, categorized by their strengths:
+
+---
+
+### 1. [LiteLLM](https://github.com/BerriAI/litellm) (The Community Standard)
+LiteLLM is the most widely adopted open-source LLM proxy. It translates calls to 100+ LLMs into the standard OpenAI API format.
+
+* **Best for:** Most developers and teams looking for an all-in-one, plug-and-play proxy.
+* **Key Features:**
+  * **Unified Interface:** Call Bedrock, Azure, Anthropic, Vertex AI, Ollama, vLLM, and Hugging Face using standard OpenAI SDKs (`openai.chat.completions.create`).
+  * **Resilience:** Automatic retries, load balancing, and fallbacks (e.g., if Claude 3.5 Sonnet times out, failover to GPT-4o).
+  * **Governance:** Virtual API key management, spend tracking per user/team, and strict budget caps.
+  * **Integrations:** Native support for Langfuse, OpenTelemetry, Datadog, and Helicone.
+* **Tech Stack:** Python / Docker.
+
+---
+
+### 2. [Portkey AI Gateway](https://github.com/Portkey-AI/gateway) (Fast &amp; Ultra-Lightweight)
+Portkey open-sourced its production-grade AI gateway designed for ultra-low latency and edge deployment.
+
+* **Best for:** High-throughput systems, edge/serverless runtimes (Cloudflare Workers, Fastly, Node.js).
+* **Key Features:**
+  * **Speed:** Extremely low latency overhead (&lt;1ms) and small footprint (~45KB).
+  * **Multi-Provider Routing:** Supports 200+ models with round-robin, load balancing, and conditional routing.
+  * **Automatic Fallbacks &amp; Retries:** Configurable exponential backoffs and alternate model triggers.
+  * **Edge-Ready:** Runs in Node.js, Bun, Docker, or edge worker environments.
+* **Tech Stack:** TypeScript / Node.js.
+
+---
+
+### 3. [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway) (Enterprise / Cloud-Native)
+An official Envoy-based subproject under CNCF aimed at bringing production-grade traffic management to AI workloads.
+
+* **Best for:** Platform engineering and DevOps teams already running Kubernetes/Envoy in production.
+* **Key Features:**
+  * High-performance proxy with battle-tested networking architecture.
+  * Prompt routing, token-based rate limiting, and centralized observability.
+  * Standardized Envoy filter architecture for extending with custom enterprise policies.
+* **Tech Stack:** Go / Envoy C++.
+
+---
+
+### 4. [Kong AI Gateway](https://github.com/Kong/kong) (API Gateway Native)
+Kong, the industry-standard API gateway, includes native AI capabilities through its open-source AI plugin ecosystem.
+
+* **Best for:** Teams who already use Kong for traditional REST/GraphQL microservices and want to unify their AI traffic under the same infrastructure.
+* **Key Features:**
+  * **AI Proxy Plugin:** Transform payloads across providers on the fly.
+  * **Prompt Engineering Plugins:** Automatic prompt injection, templating, and guardrails at the gateway level.
+  * **Security &amp; Auth:** Leverages Kong’s existing OAuth, mTLS, and RBAC authentication mechanisms.
+* **Tech Stack:** Lua / OpenResty / NGINX.
+
+---
+
+### 5. [RouteLLM](https://github.com/lm-sys/RouteLLM) (Cost-Optimization Router)
+Developed by LMSYS (the team behind Chatbot Arena), RouteLLM specifically focuses on **intelligent model routing** to cut API costs.
+
+* **Best for:** Teams spending heavily on frontier models (like GPT-4o/Claude 3.5 Sonnet) who want to automatically route simpler prompts to cheaper models (like Llama 3 or GPT-4o-mini).
+* **Key Features:**
+  * **Trained Routers:** Uses lightweight embedding or matrix-factorization-based routers to predict whether a cheaper model can satisfy the prompt with human-level quality.
+  * Drops costs by up to 50–70% while maintaining 95%+ of frontier model benchmark performance.
+* **Tech Stack:** Python.
+
+---
+
+### 6. [Arch](https://github.com/katanemo/arch) (Prompt-Aware Intelligent Gateway)
+Arch is an open-source gateway built on Envoy, specifically optimized for **agentic workflows** and prompt security.
+
+* **Best for:** Developers building LLM agents who need prompt-aware routing and fast function-calling handling at the network layer.
+* **Key Features:**
+  * **Prompt Guardrails:** Detects prompt injections and jailbreaks before payloads hit your upstream models.
+  * **Tool/Function Calling Optimization:** Can parse intent and manage tool parameters directly at the gateway layer.
+  * Built on high-performance Envoy infrastructure.
+* **Tech Stack:** Rust / Envoy.
+
+---
+
+### Quick Comparison &amp; Decision Guide
+
+| Requirement | Recommended Tool |
+| :--- | :--- |
+| **&#34;I want an easy proxy that works with the OpenAI SDK in 5 minutes&#34;** | **LiteLLM** |
+| **&#34;I need minimal latency, edge execution, and TypeScript&#34;** | **Portkey Gateway** |
+| **&#34;I want to automatically route easy prompts to cheap models to save costs&#34;** | **RouteLLM** |
+| **&#34;I manage Kubernetes infrastructure for a large engineering org&#34;** | **Envoy AI Gateway** or **Kong** |
+| **&#34;I need fast prompt guardrails and tool calling at the proxy layer&#34;** | **Arch** |
+
+#### Getting Started Example (LiteLLM Proxy):
+```bash
+pip install &#39;litellm[proxy]&#39;
+
+# Start proxy pointing to any provider
+litellm --model ollama/llama3
+# OR
+export ANTHROPIC_API_KEY=&#34;your-key&#34;
+litellm --model anthropic/claude-3-5-sonnet-20240620
+```
+Then simply redirect your client:
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=&#34;anything&#34;,
+    base_url=&#34;http://localhost:4000&#34;,  # Your local proxy
+)
+
+response = client.chat.completions.create(
+    model=&#34;anthropic/claude-3-5-sonnet-20240620&#34;,
+    messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}],
+)
+```</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                <span style="color:#a0aec0; font-style:italic;">(none)</span>
+              
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">LiteLLM pricing</td>
+            <td>
+              <span class="status-cited">CITED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">LiteLLM operates under an open-core commercial model. The software license has two tiers:
+
+---
+
+### 1. Open Source (Self-Hosted) — **$0 / Free Forever**
+LiteLLM is open-source (MIT licensed). Teams can self-host the proxy or use the Python SDK at no licensing cost.
+
+* **Cost:** $0 (No license fee, no per-seat cost, no token markups).
+* **Included Features:**
+  * Unified OpenAI-compatible API for 100+ LLM providers (Anthropic, Bedrock, OpenAI, Vertex AI, Ollama, etc.).
+  * Spend tracking, rate limits (RPM/TPM), and virtual API keys.
+  * Load balancing, automated retries, and fallbacks.
+  * Standard logging integrations (Langfuse, LangSmith, Datadog, OpenTelemetry, S3).
+  * Basic Admin UI (SSO included for up to 5 users).
+
+---
+
+### 2. Enterprise Tier — **Custom / Contact Sales (Annual License)**
+The Enterprise plan is designed for organizations requiring enterprise-grade security, governance, compliance, and dedicated support.
+
+* **How it is priced:** 
+  * Enterprise pricing is billed annually and sized based on **gateway request capacity, architecture/deployment scope, and support SLA needs**.
+  * LiteLLM **never charges per-token markups**.
+  * Procurement is available directly or through cloud marketplaces (such as **AWS Marketplace** and **Azure Marketplace**).
+* **Enterprise-exclusive features:**
+  * **Identity &amp; Access:** Full enterprise SSO (Okta, Azure AD, Google Workspace, SAML) for 5+ users, SCIM provisioning, and JWT/OIDC authentication.
+  * **Security &amp; Compliance:** Audit logging with retention policies, IP allowlisting (CIDR), secret managers integration (AWS Secrets Manager, Vault, etc.), and automated key rotation.
+  * **Advanced Governance:** Multi-tenant hierarchy (Organizations, Teams, Projects), tag-based budgeting, and temporary budget increments.
+  * **Operations &amp; SLA:** Dedicated onboarding, 24/7 priority support with defined SLAs, air-gapped environment support, and multi-region control planes.
+
+---
+
+### Additional Costs to Keep in Mind
+When planning your LiteLLM budget, factor in:
+
+1. **Underlying LLM API Costs:** LiteLLM is a gateway, not a model reseller. You bring your own API keys and pay providers (OpenAI, Anthropic, AWS Bedrock, etc.) directly for token usage.
+2. **Hosting Infrastructure:** If self-hosting the proxy (Docker/Kubernetes/ECS), you pay your cloud provider for the compute, memory, and database (PostgreSQL/Redis) required to run the service.</div>
+                <div class="snippet-full">LiteLLM operates under an open-core commercial model. The software license has two tiers:
+
+---
+
+### 1. Open Source (Self-Hosted) — **$0 / Free Forever**
+LiteLLM is open-source (MIT licensed). Teams can self-host the proxy or use the Python SDK at no licensing cost.
+
+* **Cost:** $0 (No license fee, no per-seat cost, no token markups).
+* **Included Features:**
+  * Unified OpenAI-compatible API for 100+ LLM providers (Anthropic, Bedrock, OpenAI, Vertex AI, Ollama, etc.).
+  * Spend tracking, rate limits (RPM/TPM), and virtual API keys.
+  * Load balancing, automated retries, and fallbacks.
+  * Standard logging integrations (Langfuse, LangSmith, Datadog, OpenTelemetry, S3).
+  * Basic Admin UI (SSO included for up to 5 users).
+
+---
+
+### 2. Enterprise Tier — **Custom / Contact Sales (Annual License)**
+The Enterprise plan is designed for organizations requiring enterprise-grade security, governance, compliance, and dedicated support.
+
+* **How it is priced:** 
+  * Enterprise pricing is billed annually and sized based on **gateway request capacity, architecture/deployment scope, and support SLA needs**.
+  * LiteLLM **never charges per-token markups**.
+  * Procurement is available directly or through cloud marketplaces (such as **AWS Marketplace** and **Azure Marketplace**).
+* **Enterprise-exclusive features:**
+  * **Identity &amp; Access:** Full enterprise SSO (Okta, Azure AD, Google Workspace, SAML) for 5+ users, SCIM provisioning, and JWT/OIDC authentication.
+  * **Security &amp; Compliance:** Audit logging with retention policies, IP allowlisting (CIDR), secret managers integration (AWS Secrets Manager, Vault, etc.), and automated key rotation.
+  * **Advanced Governance:** Multi-tenant hierarchy (Organizations, Teams, Projects), tag-based budgeting, and temporary budget increments.
+  * **Operations &amp; SLA:** Dedicated onboarding, 24/7 priority support with defined SLAs, air-gapped environment support, and multi-region control planes.
+
+---
+
+### Additional Costs to Keep in Mind
+When planning your LiteLLM budget, factor in:
+
+1. **Underlying LLM API Costs:** LiteLLM is a gateway, not a model reseller. You bring your own API keys and pay providers (OpenAI, Anthropic, AWS Bedrock, etc.) directly for token usage.
+2. **Hosting Infrastructure:** If self-hosting the proxy (Docker/Kubernetes/ECS), you pay your cloud provider for the compute, memory, and database (PostgreSQL/Redis) required to run the service.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  
+                    <a href="https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE61o499Cr3y1OZmQoY03y_u5XjGq2dmz9TqdQCJRUZQZGyeligQAmkV0_tZjwzNXQoVdY5PnAbue9ugccos80w_0P7rwKv6YQmI5z9CaV4QXbz440=" target="_blank" rel="noopener">litellm.ai</a>
+                  
+                
+                  
+                    <a href="https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFQAMdE6-IyKbHfkdI-g1yIN7GnPj68e2A4vWm6iqagZZpVJARXWmGuzi-8pZDtgb8YorqvkcNXUvJvJ_Afn9eoRaT6ZlUTs7wnu09BC9Pszz6ouZ0_mURCqtsKsqo=" target="_blank" rel="noopener">resultantai.com</a>
+                  
+                
+                  
+                    <a href="https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEkMPT4QS-p6xQGuQ7I-PzdXLQshTDEBfKxTf4Th6saRqaHtd_GwbhCmuhgfoe9g-arshYh7-OW5ary8MyqB9CHGMiK-bYfjrhF3gdARdlYLfq6w5dzz8PmK4eBQ8esKzeaoPvyNHU=" target="_blank" rel="noopener">layer3labs.io</a>
+                  
+                
+              
+              
+                <div style="margin-top:6px; font-size:0.75rem; color:#718096;">
+                  <span style="font-weight:600;">Gemini searched:</span>
+                  
+                    <div style="font-style:italic; color:#a0aec0;">&#x1F50D; site:litellm.ai pricing</div>
+                  
+                    <div style="font-style:italic; color:#a0aec0;">&#x1F50D; litellm pricing</div>
+                  
+                    <div style="font-style:italic; color:#a0aec0;">&#x1F50D; litellm enterprise pricing</div>
+                  
+                    <div style="font-style:italic; color:#a0aec0;">&#x1F50D; site:docs.litellm.ai/docs/enterprise pricing</div>
+                  
+                </div>
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">LiteLLM documentation</td>
+            <td>
+              <span class="status-mentioned">MENTIONED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">The official documentation for **LiteLLM** can be accessed at:
+
+* **Official Docs:** [https://docs.litellm.ai/](https://docs.litellm.ai/)
+* **GitHub Repository:** [https://github.com/BerriAI/litellm](https://github.com/BerriAI/litellm)
+
+---
+
+### Overview of LiteLLM
+
+LiteLLM is an open-source library and proxy server that standardizes calls to over 100+ LLMs (OpenAI, Anthropic, AWS Bedrock, Google Vertex AI, Azure OpenAI, Ollama, Hugging Face, etc.) into the **OpenAI format**.
+
+It is primarily used in two ways:
+
+---
+
+### 1. Python SDK
+
+Use LiteLLM directly in Python code as a drop-in unified interface:
+
+#### Installation
+```bash
+pip install litellm
+```
+
+#### Example Usage
+```python
+from litellm import completion
+import os
+
+# Set your API keys
+os.environ[&#34;OPENAI_API_KEY&#34;] = &#34;your-openai-key&#34;
+os.environ[&#34;ANTHROPIC_API_KEY&#34;] = &#34;your-anthropic-key&#34;
+
+# OpenAI call
+response = completion(
+    model=&#34;gpt-4o&#34;,
+    messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}]
+)
+print(response.choices[0].message.content)
+
+# Anthropic call (same unified interface)
+response = completion(
+    model=&#34;claude-3-5-sonnet-20240620&#34;,
+    messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}]
+)
+print(response.choices[0].message.content)
+```
+
+LiteLLM also supports **streaming**, **async calls** (`acompletion`), **embeddings** (`embedding`), and **image generation**.
+
+---
+
+### 2. LiteLLM Proxy Server
+
+Run an OpenAI-compatible proxy server to manage API keys, routing, load balancing, fallbacks, and cost tracking across multiple providers:
+
+#### Installation &amp; Run
+```bash
+pip install &#39;litellm[proxy]&#39;
+
+# Start the proxy with a configuration file
+litellm --config config.yaml
+```
+
+#### Example `config.yaml`:
+```yaml
+model_list:
+  - model_name: gpt-4
+    litellm_params:
+      model: openai/gpt-4
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: claude-3
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20240620
+      api_key: os.environ/ANTHROPIC_API_KEY
+```
+
+Once running, any OpenAI-compatible client (like the official `openai` Python SDK, LangChain, or curl) can point to `http://localhost:4000`:
+
+```bash
+curl http://localhost:4000/v1/chat/completions \
+  -H &#34;Content-Type: application/json&#34; \
+  -H &#34;Authorization: Bearer &lt;your-proxy-key&gt;&#34; \
+  -d &#39;{
+    &#34;model&#34;: &#34;claude-3&#34;,
+    &#34;messages&#34;: [{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello world!&#34;}]
+  }&#39;
+```
+
+---
+
+### Key Documentation Sections to Explore
+
+* **[Providers](https://docs.litellm.ai/docs/providers):** Instructions on setting up credentials for AWS Bedrock, Azure OpenAI, Vertex AI, Groq, Ollama, etc.
+* **[Load Balancing &amp; Fallbacks](https://docs.litellm.ai/docs/proxy/reliability):** Setting up automatic retries, fallbacks, and routing across models or regions.
+* **[Spend Tracking &amp; Virtual Keys](https://docs.litellm.ai/docs/proxy/virtual_keys):** Managing budgets, rate limits, and key generation for teams or users.
+* **[Guardrails &amp; Logging](https://docs.litellm.ai/docs/proxy/logging):** Integrations with Langfuse, Datadog, OpenTelemetry, Helicone, etc.</div>
+                <div class="snippet-full">The official documentation for **LiteLLM** can be accessed at:
+
+* **Official Docs:** [https://docs.litellm.ai/](https://docs.litellm.ai/)
+* **GitHub Repository:** [https://github.com/BerriAI/litellm](https://github.com/BerriAI/litellm)
+
+---
+
+### Overview of LiteLLM
+
+LiteLLM is an open-source library and proxy server that standardizes calls to over 100+ LLMs (OpenAI, Anthropic, AWS Bedrock, Google Vertex AI, Azure OpenAI, Ollama, Hugging Face, etc.) into the **OpenAI format**.
+
+It is primarily used in two ways:
+
+---
+
+### 1. Python SDK
+
+Use LiteLLM directly in Python code as a drop-in unified interface:
+
+#### Installation
+```bash
+pip install litellm
+```
+
+#### Example Usage
+```python
+from litellm import completion
+import os
+
+# Set your API keys
+os.environ[&#34;OPENAI_API_KEY&#34;] = &#34;your-openai-key&#34;
+os.environ[&#34;ANTHROPIC_API_KEY&#34;] = &#34;your-anthropic-key&#34;
+
+# OpenAI call
+response = completion(
+    model=&#34;gpt-4o&#34;,
+    messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}]
+)
+print(response.choices[0].message.content)
+
+# Anthropic call (same unified interface)
+response = completion(
+    model=&#34;claude-3-5-sonnet-20240620&#34;,
+    messages=[{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello!&#34;}]
+)
+print(response.choices[0].message.content)
+```
+
+LiteLLM also supports **streaming**, **async calls** (`acompletion`), **embeddings** (`embedding`), and **image generation**.
+
+---
+
+### 2. LiteLLM Proxy Server
+
+Run an OpenAI-compatible proxy server to manage API keys, routing, load balancing, fallbacks, and cost tracking across multiple providers:
+
+#### Installation &amp; Run
+```bash
+pip install &#39;litellm[proxy]&#39;
+
+# Start the proxy with a configuration file
+litellm --config config.yaml
+```
+
+#### Example `config.yaml`:
+```yaml
+model_list:
+  - model_name: gpt-4
+    litellm_params:
+      model: openai/gpt-4
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: claude-3
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20240620
+      api_key: os.environ/ANTHROPIC_API_KEY
+```
+
+Once running, any OpenAI-compatible client (like the official `openai` Python SDK, LangChain, or curl) can point to `http://localhost:4000`:
+
+```bash
+curl http://localhost:4000/v1/chat/completions \
+  -H &#34;Content-Type: application/json&#34; \
+  -H &#34;Authorization: Bearer &lt;your-proxy-key&gt;&#34; \
+  -d &#39;{
+    &#34;model&#34;: &#34;claude-3&#34;,
+    &#34;messages&#34;: [{&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: &#34;Hello world!&#34;}]
+  }&#39;
+```
+
+---
+
+### Key Documentation Sections to Explore
+
+* **[Providers](https://docs.litellm.ai/docs/providers):** Instructions on setting up credentials for AWS Bedrock, Azure OpenAI, Vertex AI, Groq, Ollama, etc.
+* **[Load Balancing &amp; Fallbacks](https://docs.litellm.ai/docs/proxy/reliability):** Setting up automatic retries, fallbacks, and routing across models or regions.
+* **[Spend Tracking &amp; Virtual Keys](https://docs.litellm.ai/docs/proxy/virtual_keys):** Managing budgets, rate limits, and key generation for teams or users.
+* **[Guardrails &amp; Logging](https://docs.litellm.ai/docs/proxy/logging):** Integrations with Langfuse, Datadog, OpenTelemetry, Helicone, etc.</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                <span style="color:#a0aec0; font-style:italic;">(none)</span>
+              
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="min-width:180px; font-size:0.85rem;">LiteLLM alternative</td>
+            <td>
+              <span class="status-mentioned">MENTIONED</span>
+            </td>
+            <td class="snippet-cell">
+              
+                <div class="snippet-preview">The best alternative to **LiteLLM** depends on whether you are using it as an **AI Gateway / Proxy** (for load balancing, rate limiting, fallbacks, and cost tracking) or as a **Lightweight Unified SDK** (for swapping model providers in your application code).
+
+---
+
+### 1. Direct LLM Gateways &amp; Proxies (Self-Hosted / Open Source)
+
+If you use the **LiteLLM Proxy** for centralized routing, fallbacks, and key management:
+
+* **[Portkey AI Gateway](https://github.com/Portkey-AI/gateway)** *(Open Source / Hosted)*
+  * **Best for:** High-throughput production apps needing reliability and guardrails.
+  * **Highlights:** Extremely fast, provides automatic retries, fallbacks, semantic caching, load balancing, and prompt guardrails. It can be run fully self-hosted via Docker or used via their cloud offering.
+* **[Bifrost](https://github.com/maximhq/bifrost)** *(Open Source)*
+  * **Best for:** Low-latency and performance-critical deployments.
+  * **Highlights:** Written in Go instead of Python, adding almost zero latency overhead compared to Python-based proxies. Ideal if LiteLLM’s runtime overhead is a bottleneck for you.
+* **[MLflow AI Gateway](https://mlflow.org/)** *(Open Source)*
+  * **Best for:** Teams already invested in MLflow or enterprise ML governance.
+  * **Highlights:** Maintained under the Linux Foundation. Offers unified model endpoints, query tracing, evaluation metrics, and strict access controls with a strong governance structure.
+* **[One API](https://github.com/songquanpeng/one-api) / [New API](https://github.com/Calcium-Ion/new-api)** *(Open Source)*
+  * **Best for:** Multi-user token allocation, quota management, and private self-hosting.
+  * **Highlights:** Provides an OpenAI-compatible interface, maps dozens of backends, and has built-in user balance/billing features.
+* **[Kong AI Gateway](https://konghq.com/products/kong-ai-gateway)** *(Enterprise / Open Core)*
+  * **Best for:** Enterprises with existing API gateway infrastructure.
+  * **Highlights:** Extends the standard Kong gateway with LLM plugins for credential rotation, semantic caching, prompt templating, and rate-limiting.
+
+---
+
+### 2. Managed / Hosted AI Gateways (No Infrastructure)
+
+If you prefer a cloud-managed routing layer without managing Docker containers or servers:
+
+* **[OpenRouter](https://openrouter.ai/)**
+  * **Best for:** Instant multi-model access behind a single endpoint.
+  * **Highlights:** One API key gives you unified access to hundreds of proprietary and open-source models (OpenAI, Anthropic, Gemini, DeepSeek, open-weights via Together/Groq), with automatic fallback routing.
+* **[Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/)**
+  * **Best for:** Edge performance and simple proxying.
+  * **Highlights:** Proxies requests at Cloudflare’s edge. Offers request logging, analytics, edge caching, and automated fallback providers with minimal setup.
+* **[Helicone](https://www.helicone.ai/)**
+  * **Best for:** Deep observability, latency tracking, and cost analytics.
+  * **Highlights:** Acts as a lightweight proxy line-in-code that captures token usage, user-level metrics, and prompts while providing smart caching and bucketed rate limits.
+
+---
+
+### 3. Unified SDKs (Code-Level Abstractions)
+
+If you were only using LiteLLM’s Python package (`litellm.completion(...)`) inside your application:
+
+* **[aisuite](https://github.com/andrewyng/aisuite)** *(Python)*
+  * **Best for:** Lightweight, transparent multi-provider swapping.
+  * **Highlights:** Maintained by Andrew Ng’s team. A thin wrapper around native provider SDKs that lets you switch between models using a `provider:model` string (e.g., `openai:gpt-4o`, `anthropic:claude-3-5-sonnet`) without heavy framework overhead.
+* **[Vercel AI SDK](https://sdk.vercel.ai/)** *(TypeScript / JavaScript)*
+  * **Best for:** Full-stack JavaScript and TypeScript applications.
+  * **Highlights:** The gold standard in the Node.js/Next.js ecosystem. Provides a unified, type-safe API across providers with first-class streaming and UI integration hooks.
+* **[Instructor](https://github.com/jxnl/instructor)** *(Python, JS, Go)*
+  * **Best for:** Structured outputs and data extraction.
+  * **Highlights:** Wraps providers to guarantee structured Pydantic/Zod responses across OpenAI, Anthropic, Gemini, Groq, and local models.
+
+---
+
+### Which one should you pick?
+
+| If you need... | Go with... |
+| :--- | :--- |
+| **Direct drop-in replacement for LiteLLM Proxy** | **Portkey AI Gateway** or **Bifrost** |
+| **High concurrency / Lower latency** | **Bifrost** (Go-based) |
+| **Hosted, zero-maintenance access to all models** | **OpenRouter** |
+| **Edge caching &amp; cost control without hosting** | **Cloudflare AI Gateway** |
+| **Pure Python wrapper (no proxy daemon)** | **aisuite** |
+| **TypeScript / Node.js development** | **Vercel AI SDK** |</div>
+                <div class="snippet-full">The best alternative to **LiteLLM** depends on whether you are using it as an **AI Gateway / Proxy** (for load balancing, rate limiting, fallbacks, and cost tracking) or as a **Lightweight Unified SDK** (for swapping model providers in your application code).
+
+---
+
+### 1. Direct LLM Gateways &amp; Proxies (Self-Hosted / Open Source)
+
+If you use the **LiteLLM Proxy** for centralized routing, fallbacks, and key management:
+
+* **[Portkey AI Gateway](https://github.com/Portkey-AI/gateway)** *(Open Source / Hosted)*
+  * **Best for:** High-throughput production apps needing reliability and guardrails.
+  * **Highlights:** Extremely fast, provides automatic retries, fallbacks, semantic caching, load balancing, and prompt guardrails. It can be run fully self-hosted via Docker or used via their cloud offering.
+* **[Bifrost](https://github.com/maximhq/bifrost)** *(Open Source)*
+  * **Best for:** Low-latency and performance-critical deployments.
+  * **Highlights:** Written in Go instead of Python, adding almost zero latency overhead compared to Python-based proxies. Ideal if LiteLLM’s runtime overhead is a bottleneck for you.
+* **[MLflow AI Gateway](https://mlflow.org/)** *(Open Source)*
+  * **Best for:** Teams already invested in MLflow or enterprise ML governance.
+  * **Highlights:** Maintained under the Linux Foundation. Offers unified model endpoints, query tracing, evaluation metrics, and strict access controls with a strong governance structure.
+* **[One API](https://github.com/songquanpeng/one-api) / [New API](https://github.com/Calcium-Ion/new-api)** *(Open Source)*
+  * **Best for:** Multi-user token allocation, quota management, and private self-hosting.
+  * **Highlights:** Provides an OpenAI-compatible interface, maps dozens of backends, and has built-in user balance/billing features.
+* **[Kong AI Gateway](https://konghq.com/products/kong-ai-gateway)** *(Enterprise / Open Core)*
+  * **Best for:** Enterprises with existing API gateway infrastructure.
+  * **Highlights:** Extends the standard Kong gateway with LLM plugins for credential rotation, semantic caching, prompt templating, and rate-limiting.
+
+---
+
+### 2. Managed / Hosted AI Gateways (No Infrastructure)
+
+If you prefer a cloud-managed routing layer without managing Docker containers or servers:
+
+* **[OpenRouter](https://openrouter.ai/)**
+  * **Best for:** Instant multi-model access behind a single endpoint.
+  * **Highlights:** One API key gives you unified access to hundreds of proprietary and open-source models (OpenAI, Anthropic, Gemini, DeepSeek, open-weights via Together/Groq), with automatic fallback routing.
+* **[Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/)**
+  * **Best for:** Edge performance and simple proxying.
+  * **Highlights:** Proxies requests at Cloudflare’s edge. Offers request logging, analytics, edge caching, and automated fallback providers with minimal setup.
+* **[Helicone](https://www.helicone.ai/)**
+  * **Best for:** Deep observability, latency tracking, and cost analytics.
+  * **Highlights:** Acts as a lightweight proxy line-in-code that captures token usage, user-level metrics, and prompts while providing smart caching and bucketed rate limits.
+
+---
+
+### 3. Unified SDKs (Code-Level Abstractions)
+
+If you were only using LiteLLM’s Python package (`litellm.completion(...)`) inside your application:
+
+* **[aisuite](https://github.com/andrewyng/aisuite)** *(Python)*
+  * **Best for:** Lightweight, transparent multi-provider swapping.
+  * **Highlights:** Maintained by Andrew Ng’s team. A thin wrapper around native provider SDKs that lets you switch between models using a `provider:model` string (e.g., `openai:gpt-4o`, `anthropic:claude-3-5-sonnet`) without heavy framework overhead.
+* **[Vercel AI SDK](https://sdk.vercel.ai/)** *(TypeScript / JavaScript)*
+  * **Best for:** Full-stack JavaScript and TypeScript applications.
+  * **Highlights:** The gold standard in the Node.js/Next.js ecosystem. Provides a unified, type-safe API across providers with first-class streaming and UI integration hooks.
+* **[Instructor](https://github.com/jxnl/instructor)** *(Python, JS, Go)*
+  * **Best for:** Structured outputs and data extraction.
+  * **Highlights:** Wraps providers to guarantee structured Pydantic/Zod responses across OpenAI, Anthropic, Gemini, Groq, and local models.
+
+---
+
+### Which one should you pick?
+
+| If you need... | Go with... |
+| :--- | :--- |
+| **Direct drop-in replacement for LiteLLM Proxy** | **Portkey AI Gateway** or **Bifrost** |
+| **High concurrency / Lower latency** | **Bifrost** (Go-based) |
+| **Hosted, zero-maintenance access to all models** | **OpenRouter** |
+| **Edge caching &amp; cost control without hosting** | **Cloudflare AI Gateway** |
+| **Pure Python wrapper (no proxy daemon)** | **aisuite** |
+| **TypeScript / Node.js development** | **Vercel AI SDK** |</div>
+                <span class="snippet-toggle" onclick="var p=this.previousElementSibling,pr=p.previousElementSibling;if(p.style.display==='block'){p.style.display='none';pr.style.display='-webkit-box';this.textContent='Show full answer ↓';}else{p.style.display='block';pr.style.display='none';this.textContent='Collapse ↑';}">Show full answer ↓</span>
+              
+            </td>
+            <td class="sources-cell">
+              
+                
+                  
+                    <a href="https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG3srJqcuHfW5kxkFdtleW571X1IVeIYvY7YlGsDznxyiqC2GCwS9Lb8d2lHpsWVeU0tdI2pfhs_Jxt1m6mI1c_88csq-aJtHWIydOUHY-DJpYkafiivmoaeEddkAKrMTnZcDflMpXueoFA" target="_blank" rel="noopener">truefoundry.com</a>
+                  
+                
+                  
+                    <a href="https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHX1AMijkO0SCY6YjJ0IBxvTlm1KF3uXO0tuylQ7KdsdJHMtROVl1VI-LcOvLAd1qiRBtkNiD1zhv83Wo5kE_OObN1A8vPz9svR2Aa2Y59q_cGnE3iAA8BnkmPhfCeig2VeW8dh4Ce9amExig==" target="_blank" rel="noopener">inworld.ai</a>
+                  
+                
+                  
+                    <a href="https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE73QLQJepD7_6RRN0NdUeBSlW12vOtzxgZiDx2r7Zndip8FFt3kTKA7oVu42QuArJW-nsJQ-rSG-UVejO3WvvSFeiPnwPJfJUUa2lvxcC6cIYu5VdJlTYRkoyYQRToZTYzHjgeldBhyKtE6CZZTw==" target="_blank" rel="noopener">wso2.com</a>
+                  
+                
+              
+              
+                <div style="margin-top:6px; font-size:0.75rem; color:#718096;">
+                  <span style="font-weight:600;">Gemini searched:</span>
+                  
+                    <div style="font-style:italic; color:#a0aec0;">&#x1F50D; aisuite Andrew Ng github</div>
+                  
+                    <div style="font-style:italic; color:#a0aec0;">&#x1F50D; litellm alternatives github proxy</div>
+                  
+                </div>
+              
+            </td>
+          </tr>
+          
+        </tbody>
+      </table>
+    </div>
+
+    
+    <div class="comp-chart">
+      <h3>Competitor Mentions in AI Responses</h3>
+      
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">OpenRouter</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 100%"></div>
+        </div>
+        <span class="comp-count">3</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">Helicone</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 100%"></div>
+        </div>
+        <span class="comp-count">3</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">Vercel AI SDK</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 100%"></div>
+        </div>
+        <span class="comp-count">3</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">Portkey</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 67%"></div>
+        </div>
+        <span class="comp-count">2</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">LangChain</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 67%"></div>
+        </div>
+        <span class="comp-count">2</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">LlamaIndex</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 67%"></div>
+        </div>
+        <span class="comp-count">2</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">Cloudflare AI Gateway</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 67%"></div>
+        </div>
+        <span class="comp-count">2</span>
+      </div>
+      
+      <div class="comp-bar-row">
+        <span class="comp-name">Kong AI Gateway</span>
+        <div class="comp-bar-wrap">
+          <div class="comp-bar" style="width: 67%"></div>
+        </div>
+        <span class="comp-count">2</span>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  <!-- 5. THREE CHECK SECTIONS -->
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Direct Answer Lead</h2>
+      <span class="check-score-display ' style='color:#e53e3e">
+        34.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        AI assistants like ChatGPT and Perplexity extract the first paragraph of a page to form their answer.
+        If your opening copy does not immediately state who you are, what you do, and include one concrete fact,
+        AI will either skip your page or paraphrase it inaccurately &mdash; costing you citations.
+      
+    </p>
+    
+    <div class="evidence-block">The AI Gateway for platform teams Self-host in minutes. No credit card. “LiteLLM gives NVIDIA engineers a single, consistent way to access more than 100 AI model endpoints.” “LiteLLM streamlines the complexities of managing multiple LLM models.” “LiteLLM has let my team provide the latest LLM models to our users, usually within a day of them being released… it has saved us months of work.” “If we decide to switch the backend model, it’s a simple configuration update in the gateway; no code changes, procurement cycles, or repetitive security reviews required.” “After the company began using router provider LiteLLM, the</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Fact Density &amp; Structure</h2>
+      <span class="check-score-display ' style='color:#38a169">
+        100.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        Generative AI prefers content with verifiable facts &mdash; numbers, dates, certifications, and statistics.
+        Pages with vague marketing language score poorly in AI-synthesised answers. Structured content
+        (headings, lists, schema markup) also helps AI parse and attribute your content correctly.
+      
+    </p>
+    
+    <div class="evidence-block">Cost optimization: Maximize the ROI of your AI. Swap models without changing a line of code, and let Auto Routing send each request to the model that should handle it, so the budget you set goes further.</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Agent Discoverability</h2>
+      <span class="check-score-display ' style='color:#d69e2e">
+        65.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        AI crawlers (GPTBot, ClaudeBot, Perplexity) respect robots.txt and look for a llms.txt file
+        (similar to robots.txt but written for language models). Blocking these bots or failing to provide
+        an llms.txt means AI systems cannot learn about your business &mdash; making you invisible in AI answers.
+      
+    </p>
+    
+    <div class="evidence-block">All live-search AI bots: allowed
+llms.txt: missing
+sitemap.xml: present</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Content Freshness</h2>
+      <span class="check-score-display ' style='color:#e53e3e">
+        0.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        Perplexity applies a strict ~30-day recency window when ranking sources. Content older than 90 days
+        drops sharply in AI citation frequency. Ensure your key landing pages have a verifiable publish or
+        update date in structured data &mdash; AI cannot trust what it cannot date.
+      
+    </p>
+    
+    <p style="font-size:0.8rem; color:#b7791f; margin:0 0 8px;">
+      <strong>Not measured on this run</strong> &mdash; excluded from the score rather than counted as a low result.
+    </p>
+    
+    <div class="evidence-block">No trustworthy date signal. A Last-Modified header was present (2026-10-02 06:27 UTC) but discarded: it is under 24h old with no JSON-LD or meta date to corroborate it, which is the signature of a CDN/SSR stamp set at request time rather than a content update. Age not measured, excluded from score.</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Markdown-safe Structure</h2>
+      <span class="check-score-display ' style='color:#38a169">
+        100.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        AI engines convert your HTML to plain text before processing, and extract question/answer blocks in
+        preference to prose. Two formats survive that reduction: an H2/H3 phrased as a question with a short
+        answer directly below it, or an explicit FAQPage JSON-LD block &mdash; either one counts here.
+        Generic marketing headings (&ldquo;Our Services&rdquo;) are stripped out.
+      
+    </p>
+    
+    <div class="evidence-block">6 question/answer pair(s) declared in FAQPage schema: What is LiteLLM?; Is LiteLLM free and open source? (+4 more)</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Citation Density</h2>
+      <span class="check-score-display ' style='color:#e53e3e">
+        15.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        Pages that cite their sources &mdash; via attributed blockquotes, &lt;cite&gt; tags, or phrases like
+        &ldquo;according to&rdquo; &mdash; signal authoritative content. AI systems trained on academic and
+        journalistic text recognise these patterns and prefer to cite sources that themselves cite sources.
+        Only quotes that name their source count: an unattributed customer testimonial is inbound praise,
+        not an outbound citation.
+      
+    </p>
+    
+    <div class="evidence-block">No attribution signals (no attributed quotes, cite tags, or &#39;according to&#39; phrases). 5 unattributed &lt;blockquote&gt; not counted (no cite, link, or named source — reads as testimonial, not citation)</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Organization E-E-A-T</h2>
+      <span class="check-score-display ' style='color:#38a169">
+        100.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        Google&rsquo;s Search Generative Experience and Bing Copilot use Organisation schema (JSON-LD) to
+        verify business identity before featuring a brand in an AI answer. For a business with premises,
+        a complete NAP (Name + Address + Phone) is the trust signal. For one without &mdash; software,
+        publisher, agency &mdash; verifiable identity does the same job: sameAs profiles, legalName,
+        founding date and logo let an engine resolve exactly which real-world entity the page describes.
+      
+    </p>
+    
+    <div class="evidence-block">Schema: @type: Organization | name: &#39;LiteLLM&#39; | sameAs (5 links) | identity: legalName, foundingDate, logo, url, description</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Content Depth</h2>
+      <span class="check-score-display ' style='color:#38a169">
+        85.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        Thin pages (&lt;300 words) are routinely filtered by AI engines before synthesis. At least 600 words
+        of substantive content is needed for Perplexity and ChatGPT Browse to consider a page citable.
+        This word count refers to visible body text only &mdash; navigation and footer boilerplate is excluded.
+      
+    </p>
+    
+    <div class="evidence-block">973 words — Substantial — above typical citation threshold</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Wikipedia Presence</h2>
+      <span class="check-score-display ' style='color:#38a169">
+        100.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        Wikipedia is the most-cited source across all major AI engines. A Wikipedia article about your brand
+        is the strongest possible authority signal. For most businesses this isn&rsquo;t achievable, but mentions
+        within existing Wikipedia articles (city, industry, or niche pages) and a Wikidata entity are.
+      
+    </p>
+    
+    <div class="evidence-block">Wikipedia article found: &#39;LiteLLM&#39;</div>
+  </div>
+  
+  <div class="card">
+    <div class="check-header">
+      <h2 style="border:none;padding:0;margin:0;">Community Citations</h2>
+      <span class="check-score-display ' style='color:#e53e3e">
+        0.0<span class="check-score-max">/100</span>
+      </span>
+    </div>
+    <p class="why-matters">
+      
+        Perplexity and ChatGPT heavily surface Reddit and Hacker News threads in their answers, because that
+        content is authentic, conversational, and recent. This counts how many community sources the AI engine
+        actually pulled from while answering questions about your category &mdash; read from the live citation
+        list in the probe above, not from a third-party scrape.
+      
+    </p>
+    
+    <p style="font-size:0.8rem; color:#b7791f; margin:0 0 8px;">
+      <strong>Not measured on this run</strong> &mdash; excluded from the score rather than counted as a low result.
+    </p>
+    
+    <div class="evidence-block">Only 2 of 8 probe queries triggered a live web search (minimum 3 needed), too small a sample to report a community-citation rate from. Seen so far: medium.com. Not measured, excluded from score.</div>
+  </div>
+  
+
+  <!-- 6. FIX ROADMAP -->
+  <div class="card">
+    <h2>Fix Roadmap</h2>
+
+    <!-- 2x2 Matrix -->
+    
+    
+    
+    
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+      
+        
+      
+    
+
+    <div class="matrix-axis-label-row" style="margin-bottom:4px;">
+      <div class="matrix-axis-x">Low Effort</div>
+      <div class="matrix-axis-x">High Effort</div>
+    </div>
+    <div class="matrix-grid">
+      <div class="matrix-cell quick-wins">
+        <h4 style="color:#276749;">&#9889; Quick Wins</h4>
+        <p style="font-size:0.78rem; color:#276749; margin-bottom:8px;">High Impact &middot; Low Effort</p>
+        
+          <ul><li>Add a clear one-sentence product definition</li><li>Add an llms.txt file to your website</li><li>Add visible and structured update dates</li><li>Add Sources and Links to Existing Quotes</li><li>Link Wikipedia Page to Wikidata Entity</li></ul>
+        
+      </div>
+      <div class="matrix-cell strategic">
+        <h4 style="color:#2c5282;">&#127775; Strategic</h4>
+        <p style="font-size:0.78rem; color:#2c5282; margin-bottom:8px;">High Impact &middot; High Effort</p>
+        
+          <ul><li>Publish a community discussion starter on Reddit</li></ul>
+        
+      </div>
+      <div class="matrix-cell easy-wins">
+        <h4 style="color:#744210;">&#128161; Easy Wins</h4>
+        <p style="font-size:0.78rem; color:#744210; margin-bottom:8px;">Low Impact &middot; Low Effort</p>
+        
+          <ul><li>Replace vague cost claims with specific metrics</li><li>Enrich Organization Schema With Key Expertise Signals</li><li>Add an FAQ Section to Homepage</li></ul>
+        
+      </div>
+      <div class="matrix-cell deprioritize">
+        <h4 style="color:#4a5568;">&#128337; Deprioritize</h4>
+        <p style="font-size:0.78rem; color:#4a5568; margin-bottom:8px;">Low Impact &middot; High Effort</p>
+        
+          <ul><li>Fix Markdown-safe Structure</li></ul>
+        
+      </div>
+    </div>
+
+    <!-- Fix cards -->
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Add a clear one-sentence product definition</span>
+        <span class="badge badge-impact-high">Impact: high</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">AI search engines read the very top of your homepage to quickly answer &#39;What is LiteLLM?&#39; for users. Currently, your opening section uses fragmented taglines and customer quotes instead of directly stating what the software actually does. If you leave this unfixed, AI search tools may mischaracterize your product or skip recommending it in direct answers.</p>
+      <div class="copy-paste-block">LiteLLM is an open-source AI gateway that provides developers with a single, unified interface to connect, call, and manage over 100 large language models (LLMs) across multiple providers.</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Replace vague cost claims with specific metrics</span>
+        <span class="badge badge-impact-medium">Impact: medium</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">Generative AI search engines like Perplexity and ChatGPT prioritize dense, factual details over vague marketing slogans when deciding which tools to recommend. Replacing generic claims like &#39;maximize your ROI&#39; with specific model names and concrete optimization techniques makes your software significantly more quotable. If left as marketing fluff, AI crawlers will likely overlook your site and cite competitors who state precise technical capabilities.</p>
+      <div class="copy-paste-block">Cost optimization: Cut AI inferencing costs by up to 50% using semantic caching and dynamic auto-routing. LiteLLM automatically directs complex prompts to high-capacity models like GPT-4o while routing simpler queries to cost-effective models like Claude 3.5 Haiku—all without requiring application code changes.</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Add an llms.txt file to your website</span>
+        <span class="badge badge-impact-high">Impact: high</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">An &#39;llms.txt&#39; file is a straightforward cheat sheet that helps AI search engines and smart assistants understand your business at a glance. Publishing this text file at your website&#39;s root address helps tools like ChatGPT and Perplexity accurately find and recommend your software. If left missing, AI agents may overlook your key services or provide outdated information when users ask for recommendations.</p>
+      <div class="copy-paste-block"># LiteLLM
+
+&gt; LiteLLM is an AI infrastructure software, offering Unified AI model gateway.
+
+## About
+
+- [LiteLLM Homepage](https://litellm.ai): Main website with full service details
+- [LiteLLM Services](https://litellm.ai/services): Complete list of services offered
+
+## Contact
+
+- [LiteLLM Contact](https://litellm.ai/contact): Get in touch or request a quote</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Add visible and structured update dates</span>
+        <span class="badge badge-impact-high">Impact: high</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">AI search engines need clear proof of when your content was last revised rather than relying on server timestamps that update automatically every time a page loads. Adding a readable date on the page alongside a matching hidden data tag (JSON-LD) proves your AI software documentation is actively maintained. Without this, AI models assume your technical guides are outdated and may exclude LiteLLM from fresh recommendations.</p>
+      <div class="copy-paste-block">&lt;p style=&#34;font-size: 0.9em; color: #666;&#34;&gt;Last updated: October 24, 2024&lt;/p&gt;
+
+&lt;script type=&#34;application/ld+json&#34;&gt;
+{
+  &#34;@context&#34;: &#34;https://schema.org&#34;,
+  &#34;@type&#34;: &#34;WebPage&#34;,
+  &#34;dateModified&#34;: &#34;2024-10-24&#34;
+}
+&lt;/script&gt;</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Fix Markdown-safe Structure</span>
+        <span class="badge badge-impact-medium">Impact: medium</span>
+        <span class="badge badge-effort-medium">Effort: medium</span>
+      </div>
+      <p class="fix-explanation">See evidence above.</p>
+      <div class="copy-paste-block"></div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Add Sources and Links to Existing Quotes</span>
+        <span class="badge badge-impact-high">Impact: high</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">This change adds proper source credit (using HTML &lt;cite&gt; tags and clear &#39;According to&#39; phrases) to the uncredited quote blocks on your website. AI search engines like ChatGPT and Perplexity favor pages that reference credible research and external documentation, treating them as authoritative sources of truth. If you ignore this, AI search tools will categorize your content as unsubstantiated marketing opinion and decline to cite your software in AI search answers.</p>
+      <div class="copy-paste-block">&lt;blockquote cite=&#34;https://github.com/BerriAI/litellm&#34;&gt;
+  &lt;p&gt;&#34;Standardizing multi-model LLM calls through a unified proxy reduces deployment overhead and prevents vendor lock-in across provider outages.&#34;&lt;/p&gt;
+  &lt;footer&gt;— According to technical documentation by &lt;cite&gt;&lt;a href=&#34;https://github.com/BerriAI/litellm&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;LiteLLM Open Source Maintainers&lt;/a&gt;&lt;/cite&gt;&lt;/footer&gt;
+&lt;/blockquote&gt;</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Enrich Organization Schema With Key Expertise Signals</span>
+        <span class="badge badge-impact-medium">Impact: medium</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">This structured code snippet tells search engines and AI models exactly what technical topics your company specializes in (known as &#39;knowsAbout&#39;) and how to reach your team. Search systems rely on these explicit credibility signals to gauge your authority on AI infrastructure. If left incomplete, AI assistants may not confidently cite LiteLLM as an industry standard for proxy and gateway solutions.</p>
+      <div class="copy-paste-block">&lt;script type=&#34;application/ld+json&#34;&gt;
+{
+  &#34;@context&#34;: &#34;https://schema.org&#34;,
+  &#34;@type&#34;: &#34;Organization&#34;,
+  &#34;name&#34;: &#34;LiteLLM&#34;,
+  &#34;url&#34;: &#34;https://www.litellm.ai&#34;,
+  &#34;knowsAbout&#34;: [
+    &#34;Large Language Model Gateways&#34;,
+    &#34;AI Infrastructure&#34;,
+    &#34;OpenAI API Proxy&#34;,
+    &#34;LLM Cost Tracking&#34;
+  ],
+  &#34;contactPoint&#34;: {
+    &#34;@type&#34;: &#34;ContactPoint&#34;,
+    &#34;contactType&#34;: &#34;technical support&#34;,
+    &#34;email&#34;: &#34;support@berri.ai&#34;
+  }
+}
+&lt;/script&gt;</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Add an FAQ Section to Homepage</span>
+        <span class="badge badge-impact-medium">Impact: medium</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">Adding a short Frequently Asked Questions (FAQ) section easily pushes your page past the 1,000-word mark that search and AI systems favor for thorough content. AI engines like ChatGPT and Perplexity specifically look for question-and-answer formats to pull direct answers into user responses. Leaving this out means your site might be skipped in favor of competitor pages that directly answer common user queries.</p>
+      <div class="copy-paste-block">### Frequently Asked Questions
+
+**What is LiteLLM?**
+LiteLLM is an open-source proxy service that lets developers call over 100 Large Language Models (like OpenAI, Anthropic, and Bedrock) using a single, unified API format.
+
+**How does LiteLLM handle spend tracking and reliability?**
+LiteLLM includes built-in load balancing, automatic failovers to backup models, and real-time spend tracking by team or user key so costs stay predictable.
+
+**Can LiteLLM be self-hosted securely?**
+Yes. LiteLLM is fully self-hostable in your private cloud or on-premise infrastructure, ensuring your proprietary data and prompts remain private.</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Link Wikipedia Page to Wikidata Entity</span>
+        <span class="badge badge-impact-high">Impact: high</span>
+        <span class="badge badge-effort-low">Effort: low</span>
+      </div>
+      <p class="fix-explanation">Wikidata is a free, machine-readable facts database that AI engines use behind the scenes to verify Wikipedia articles. Linking your Wikipedia page to an official Wikidata record confirms to AI systems like ChatGPT and Perplexity that your software is legitimate and notable. Without this link, search engines may overlook your Wikipedia profile or display incomplete summaries of your software in AI search results.</p>
+      <div class="copy-paste-block">Label: LiteLLM
+Description: Open-source Python library and proxy server for unified LLM API access
+Instance of (P31): software library (Q188860)
+Official website (P856): https://www.litellm.ai/
+Source code repository (P1324): https://github.com/BerriAI/litellm
+Wikipedia article: https://en.wikipedia.org/wiki/LiteLLM</div>
+    </div>
+    
+    <div class="fix-card">
+      <div class="fix-card-header">
+        <span class="fix-card-title">Publish a community discussion starter on Reddit</span>
+        <span class="badge badge-impact-high">Impact: high</span>
+        <span class="badge badge-effort-medium">Effort: medium</span>
+      </div>
+      <p class="fix-explanation">This is a ready-to-share discussion post for tech communities like Reddit (r/LocalLLaMA) and Hacker News. AI search engines rely heavily on active forum conversations to confirm that software is popular, reliable, and worth citing in answer results. If you ignore this, search engines will find too few mentions of LiteLLM to recommend you to potential users.</p>
+      <div class="copy-paste-block">Title: How we simplified 100+ LLM integrations into one OpenAI-format proxy with LiteLLM
+
+Hey everyone,
+
+Managing multiple LLM providers (Anthropic, Bedrock, Azure, OpenAI) often leads to messy API wrappers, broken fallbacks, and inconsistent cost tracking. We put together an open-source standard with LiteLLM to call 100+ LLMs using the unified OpenAI input/output format.
+
+Key capabilities we focus on:
+- Unified API format across 100+ models
+- Automatic retries, fallbacks, and load balancing
+- Centralized spend tracking and rate limiting per team/key
+
+GitHub Repo: https://github.com/BerriAI/litellm
+Docs: https://docs.litellm.ai/
+
+What is your biggest headache when managing multiple AI model providers in production right now? Would love your feedback and edge cases!</div>
+    </div>
+    
+  </div>
+
+  <!-- 7. APPENDIX -->
+  <div class="card">
+    <h2>Appendix &mdash; Raw Details</h2>
+    
+    <details>
+      <summary>Direct Answer Lead &mdash; raw details</summary>
+      <div class="json-block">{
+  "confidence": 0.85,
+  "first_100_words": "The AI Gateway for platform teams Self-host in minutes. No credit card. \u201cLiteLLM gives NVIDIA engineers a single, consistent way to access more than 100 AI model endpoints.\u201d \u201cLiteLLM streamlines the complexities of managing multiple LLM models.\u201d \u201cLiteLLM has let my team provide the latest LLM models to our users, usually within a day of them being released\u2026 it has saved us months of work.\u201d \u201cIf we decide to switch the backend model, it\u2019s a simple configuration update in the gateway; no code changes, procurement cycles, or repetitive security reviews required.\u201d \u201cAfter the company began using router provider LiteLLM, the",
+  "is_self_contained": false,
+  "weakness": "The opening consists of fragmented taglines and customer testimonials rather than a complete sentence defining what the product is and does."
+}</div>
+    </details>
+    
+    <details>
+      <summary>Fact Density &amp; Structure &mdash; raw details</summary>
+      <div class="json-block">{
+  "fact_count": 7,
+  "fact_density": 1.17,
+  "rewrite": "Cost optimization: Cut inferencing expenses by up to [VERIFY: 45-60%] via semantic caching and dynamic auto-routing, which dispatches complex queries to GPT-4o while routing simple tasks to Claude 3.5 Haiku.",
+  "schema_types": 4,
+  "structure": {
+    "h2_count": 6,
+    "h3_count": 4,
+    "list_count": 7,
+    "outbound_links": 27,
+    "table_count": 1
+  }
+}</div>
+    </details>
+    
+    <details>
+      <summary>Agent Discoverability &mdash; raw details</summary>
+      <div class="json-block">{
+  "blocked_live_bots": {},
+  "blocked_train_bots": {},
+  "generated_llms_txt": "# LiteLLM\n\n\u003e LiteLLM is an AI infrastructure software, offering Unified AI model gateway.\n\n## About\n\n- [LiteLLM Homepage](https://litellm.ai): Main website with full service details\n- [LiteLLM Services](https://litellm.ai/services): Complete list of services offered\n\n## Contact\n\n- [LiteLLM Contact](https://litellm.ai/contact): Get in touch or request a quote\n",
+  "llms_txt_issues": [],
+  "llms_txt_status": "missing",
+  "sitemap_present": true
+}</div>
+    </details>
+    
+    <details>
+      <summary>Content Freshness &mdash; raw details</summary>
+      <div class="json-block">{
+  "date_found": null,
+  "days_ago": null,
+  "discarded_last_modified": "2026-10-02 06:27 UTC",
+  "source": "not found"
+}</div>
+    </details>
+    
+    <details>
+      <summary>Markdown-safe Structure &mdash; raw details</summary>
+      <div class="json-block">{
+  "examples": [
+    "What is LiteLLM?",
+    "Is LiteLLM free and open source?",
+    "What is an AI gateway (LLM gateway)?"
+  ],
+  "extractable_blocks": 6,
+  "faq_schema_pairs": 6,
+  "q_headings_with_answer": 0,
+  "q_headings_without_answer": 0,
+  "total_h2_h3": 10
+}</div>
+    </details>
+    
+    <details>
+      <summary>Citation Density &mdash; raw details</summary>
+      <div class="json-block">{
+  "attributed_blockquotes": 0,
+  "attribution_phrases": 0,
+  "cite_tags": 0,
+  "total_signals": 0,
+  "unattributed_blockquotes": 5
+}</div>
+    </details>
+    
+    <details>
+      <summary>Organization E-E-A-T &mdash; raw details</summary>
+      <div class="json-block">{
+  "has_address": false,
+  "has_name": true,
+  "has_phone": false,
+  "identity_fields": [
+    "legalName",
+    "foundingDate",
+    "logo",
+    "url",
+    "description"
+  ],
+  "is_local_entity": false,
+  "same_as_count": 5,
+  "schema_type": "Organization",
+  "signal_level": 4
+}</div>
+    </details>
+    
+    <details>
+      <summary>Content Depth &mdash; raw details</summary>
+      <div class="json-block">{
+  "word_count": 973
+}</div>
+    </details>
+    
+    <details>
+      <summary>Wikipedia Presence &mdash; raw details</summary>
+      <div class="json-block">{
+  "api_error": false,
+  "article": "LiteLLM",
+  "found": true
+}</div>
+    </details>
+    
+    <details>
+      <summary>Community Citations &mdash; raw details</summary>
+      <div class="json-block">{
+  "branded_citations": 1,
+  "community_citations": 1,
+  "domains": {
+    "medium.com": 1
+  },
+  "grounded_queries": 2
+}</div>
+    </details>
+    
+
+    
+      
+    
+      
+    
+      
+      <details>
+        <summary>Generated llms.txt &mdash; Agent Discoverability</summary>
+        <div class="json-block"># LiteLLM
+
+&gt; LiteLLM is an AI infrastructure software, offering Unified AI model gateway.
+
+## About
+
+- [LiteLLM Homepage](https://litellm.ai): Main website with full service details
+- [LiteLLM Services](https://litellm.ai/services): Complete list of services offered
+
+## Contact
+
+- [LiteLLM Contact](https://litellm.ai/contact): Get in touch or request a quote
+</div>
+      </details>
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+
+  <!-- 8. FOOTER -->
+  <div class="footer">
+    <p>Generated by <strong>GEO Auditor</strong> &mdash; Generative Engine Optimisation analysis tool</p>
+    <p style="margin-top:4px;">Audited: https://www.litellm.ai/ &nbsp;|&nbsp; Overall score: 59.7/100 (Fair)</p>
+  </div>
+
+</div><!-- /container -->
+</body>
+</html>

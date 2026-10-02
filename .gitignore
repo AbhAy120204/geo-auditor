@@ -6,7 +6,6 @@ __pycache__/
 .pytest_cache/
 
 # Generated report output — not source
-*.html
 reports/
 
 # Run logs
