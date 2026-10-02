@@ -1,5 +1,5 @@
 import json
-from geo_auditor.models import CheckResult, BusinessProfile, LLMConfig, Fix
+from geo_auditor.models import BusinessProfile, LLMConfig, Fix
 from geo_auditor.llm import chat_complete
 
 SYSTEM = """You are a GEO consultant writing fix instructions for a business owner (not a developer).

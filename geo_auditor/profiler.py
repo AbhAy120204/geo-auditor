@@ -15,10 +15,11 @@ Return ONLY valid JSON with keys: name, category, city, offering.
 def profile(fetch_result: FetchResult, config: LLMConfig) -> BusinessProfile:
     domain = urlparse(fetch_result.url).netloc.replace("www.", "")
     content_preview = fetch_result.text[:1500]
+    user_content = f"URL: {fetch_result.url}\n\n{content_preview}"
     try:
         raw = chat_complete(config, [
             {"role": "system", "content": SYSTEM},
-            {"role": "user", "content": f"URL: {fetch_result.url}\n\n{content_preview}"},
+            {"role": "user", "content": user_content},
         ], json_mode=True)
         data = json.loads(raw)
         return BusinessProfile(

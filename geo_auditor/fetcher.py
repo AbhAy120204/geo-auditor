@@ -22,6 +22,6 @@ def fetch(url: str, timeout: int = 15) -> FetchResult:
             for tag in soup(["script", "style", "nav", "footer", "header"]):
                 tag.decompose()
             text = soup.get_text(separator="\n", strip=True)
-        return FetchResult(html=html, text=text, url=str(resp.url), status_code=resp.status_code)
+        return FetchResult(html=html, text=text, url=str(resp.url), status_code=resp.status_code, headers=dict(resp.headers))
     except Exception as e:
         return FetchResult(html="", text="", url=url, status_code=0, error=str(e))
