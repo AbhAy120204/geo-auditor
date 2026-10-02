@@ -2,7 +2,7 @@
 
 A CLI tool that audits any business website for visibility in AI search engines (ChatGPT, Perplexity, Google AI Overviews). Enter a URL; get a scored HTML report showing where you're invisible, why, and exactly what to fix.
 
-##[Live demo report →](https://abhay120204.github.io/geo-auditor/)**
+## **[Live demo report →](https://abhay120204.github.io/geo-auditor/)**
 
 ## Quick start (under 5 minutes)
 
